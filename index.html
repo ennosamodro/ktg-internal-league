@@ -693,9 +693,15 @@ body::before {
   <!-- SPONSOR STRIP -->
   <div class="sponsor-strip">
     <span class="sp-label">Presented by</span>
-    <span class="sp-name" id="sp1name">— Sponsor 1 —</span>
+    <div style="display:flex;align-items:center;gap:8px;height:30px;">
+      <img id="sp1logo" src="" alt="Sponsor 1" style="max-height:30px;max-width:100px;display:none;object-fit:contain;">
+      <span class="sp-name" id="sp1name">— Sponsor 1 —</span>
+    </div>
     <div class="sp-div"></div>
-    <span class="sp-name" id="sp2name">— Sponsor 2 —</span>
+    <div style="display:flex;align-items:center;gap:8px;height:30px;">
+      <img id="sp2logo" src="" alt="Sponsor 2" style="max-height:30px;max-width:100px;display:none;object-fit:contain;">
+      <span class="sp-name" id="sp2name">— Sponsor 2 —</span>
+    </div>
   </div>
 </div>
 
@@ -847,11 +853,17 @@ body::before {
 
       <!-- SPONSOR -->
       <div class="atab" id="atab-sponsor">
-        <label class="mlabel">Sponsor Utama 1 (Header Besar)</label>
+        <label class="mlabel">Sponsor Utama 1 - Nama</label>
         <input type="text" id="sp1in" placeholder="ex: Bromen Men Grooming">
-        <label class="mlabel">Sponsor Utama 2 (Header Besar)</label>
+        <label class="mlabel">Sponsor Utama 1 - Logo URL (GitHub raw)</label>
+        <input type="text" id="sp1url" placeholder="https://raw.githubusercontent.com/...">
+        
+        <label class="mlabel" style="margin-top:12px;">Sponsor Utama 2 - Nama</label>
         <input type="text" id="sp2in" placeholder="ex: Sirtanio Organik">
-        <label class="mlabel">Sponsor Pendukung (pisah koma, tampil kecil di bawah)</label>
+        <label class="mlabel">Sponsor Utama 2 - Logo URL (GitHub raw)</label>
+        <input type="text" id="sp2url" placeholder="https://raw.githubusercontent.com/...">
+        
+        <label class="mlabel" style="margin-top:12px;">Sponsor Pendukung (pisah koma, tampil kecil di bawah)</label>
         <input type="text" id="spExtraIn" placeholder="ex: Toko Raket A, Apotek B, Klinik C">
         <button class="mbtn" id="saveSponsorBtn" onclick="saveSponsor()">💾 Simpan Sponsor</button>
       </div>
@@ -864,7 +876,8 @@ body::before {
 <script>
 // ─── CONSTANTS ───
 const ADMIN_PW = 'ktg2025';
-const JSONBIN_KEY = '$2a$10$SIiX6zoMNkw/ZLfjsSSN3eacNuH4a7hqEGVt6qzBjJvEKnfipul/e';
+const JSONBIN_KEY = '$2a$10$SIiX6zoMNkw/ZLfjsSSN3eacNuH4a7hqEGVt6qzBjJvEKnfipul/e
+';
 const JSONBIN_BIN = '69f19f54aaba8821974e0fa6';
 
 const TEAM_COLORS = ['#ff4757','#2979ff','#ffd600','#00e676'];
@@ -1196,8 +1209,30 @@ function renderHasil() {
 }
 
 function renderSponsor() {
-  document.getElementById('sp1name').textContent = SPONSORS.s1||'— Sponsor 1 —';
-  document.getElementById('sp2name').textContent = SPONSORS.s2||'— Sponsor 2 —';
+  // Sponsor 1
+  const sp1name = document.getElementById('sp1name');
+  const sp1logo = document.getElementById('sp1logo');
+  if (SPONSORS.s1url) {
+    sp1logo.src = SPONSORS.s1url;
+    sp1logo.style.display = 'block';
+    sp1name.textContent = '';
+  } else {
+    sp1logo.style.display = 'none';
+    sp1name.textContent = SPONSORS.s1 || '— Sponsor 1 —';
+  }
+  
+  // Sponsor 2
+  const sp2name = document.getElementById('sp2name');
+  const sp2logo = document.getElementById('sp2logo');
+  if (SPONSORS.s2url) {
+    sp2logo.src = SPONSORS.s2url;
+    sp2logo.style.display = 'block';
+    sp2name.textContent = '';
+  } else {
+    sp2logo.style.display = 'none';
+    sp2name.textContent = SPONSORS.s2 || '— Sponsor 2 —';
+  }
+  
   // extras (small sponsors in footer)
   const extrasCon = document.getElementById('sponsorExtras');
   if (!extrasCon) return;
@@ -1350,7 +1385,9 @@ async function delPlayer(ti,pi){
 
 async function saveSponsor(){
   SPONSORS.s1=document.getElementById('sp1in').value.trim();
+  SPONSORS.s1url=document.getElementById('sp1url').value.trim();
   SPONSORS.s2=document.getElementById('sp2in').value.trim();
+  SPONSORS.s2url=document.getElementById('sp2url').value.trim();
   const extrasRaw=document.getElementById('spExtraIn').value.trim();
   SPONSORS.extras=extrasRaw?extrasRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   await saveAll(); renderSponsor();
@@ -1358,7 +1395,9 @@ async function saveSponsor(){
 
 function populateSponsorAdmin(){
   document.getElementById('sp1in').value=SPONSORS.s1||'';
+  document.getElementById('sp1url').value=SPONSORS.s1url||'';
   document.getElementById('sp2in').value=SPONSORS.s2||'';
+  document.getElementById('sp2url').value=SPONSORS.s2url||'';
   document.getElementById('spExtraIn').value=(SPONSORS.extras||[]).join(', ');
 }
 
