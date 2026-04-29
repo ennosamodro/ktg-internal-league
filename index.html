@@ -646,6 +646,17 @@ body::before {
 .empty-emoji { font-size: 44px; margin-bottom: 12px; }
 .empty-txt { font-size: 13px; font-weight: 700; }
 
+/* SMALL SPONSORS */
+.sp-extras-wrap {
+  display: none;
+  flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 8px; padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.sp-extra { font-size: 10px; font-weight: 800; color: var(--gray2); letter-spacing: 1px; text-transform: uppercase; }
+.sp-extra-dot { color: rgba(255,255,255,0.1); font-size: 10px; }
+
 /* ── ANIMATIONS ── */
 @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 @keyframes popIn { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:scale(1)} }
@@ -736,6 +747,9 @@ body::before {
 <div class="section" id="tab-hasil">
   <div class="hasil-inner" id="hasilCon"></div>
 </div>
+
+<!-- SMALL SPONSORS STRIP -->
+<div class="sp-extras-wrap" id="sponsorExtras"></div>
 
 <!-- FOOTER -->
 <div class="footer">
@@ -833,10 +847,12 @@ body::before {
 
       <!-- SPONSOR -->
       <div class="atab" id="atab-sponsor">
-        <label class="mlabel">Nama Sponsor 1</label>
+        <label class="mlabel">Sponsor Utama 1 (Header Besar)</label>
         <input type="text" id="sp1in" placeholder="ex: Bromen Men Grooming">
-        <label class="mlabel">Nama Sponsor 2</label>
+        <label class="mlabel">Sponsor Utama 2 (Header Besar)</label>
         <input type="text" id="sp2in" placeholder="ex: Sirtanio Organik">
+        <label class="mlabel">Sponsor Pendukung (pisah koma, tampil kecil di bawah)</label>
+        <input type="text" id="spExtraIn" placeholder="ex: Toko Raket A, Apotek B, Klinik C">
         <button class="mbtn" id="saveSponsorBtn" onclick="saveSponsor()">💾 Simpan Sponsor</button>
       </div>
 
@@ -848,6 +864,8 @@ body::before {
 <script>
 // ─── CONSTANTS ───
 const ADMIN_PW = 'ktg2025';
+const JSONBIN_KEY = '$2a$10$SIiX6zoMNkw/ZLfjsSSN3eacNuH4a7hqEGVt6qzBjJvEKnfipul/e';
+const JSONBIN_BIN = '69f19f54aaba8821974e0fa6';
 
 const TEAM_COLORS = ['#ff4757','#2979ff','#ffd600','#00e676'];
 const TEAM_EMOJIS = ['🔴','🔵','🟡','🟢'];
@@ -870,23 +888,101 @@ const SCHEDULE = [
 // ─── STATE ───
 let TEAMS, RESULTS, SPONSORS;
 let isAdmin = false;
+let isSyncing = false;
 
-function load() {
+// ─── JSONBIN API ───
+async function fetchFromCloud() {
   try {
-    TEAMS = JSON.parse(localStorage.getItem('ktg_teams')) || JSON.parse(JSON.stringify(DEFAULT_TEAMS));
-    RESULTS = JSON.parse(localStorage.getItem('ktg_results')) || {};
-    SPONSORS = JSON.parse(localStorage.getItem('ktg_sponsors')) || {s1:'',s2:''};
+    showSyncStatus('⏳ Memuat data...');
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN}/latest`, {
+      headers: { 'X-Access-Key': JSONBIN_KEY }
+    });
+    if (!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    const record = data.record;
+    TEAMS = record.teams?.length ? record.teams : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+    RESULTS = record.results || {};
+    SPONSORS = record.sponsors || {s1:'',s2:'',extras:[]};
+    // cache locally for offline fallback
+    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS}));
+    hideSyncStatus();
+    renderAll();
   } catch(e) {
-    TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
-    RESULTS = {}; SPONSORS = {s1:'',s2:''};
+    // fallback to local cache
+    try {
+      const cache = JSON.parse(localStorage.getItem('ktg_cache'));
+      if (cache) {
+        TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors;
+      }
+    } catch(e2) {}
+    showSyncStatus('⚠️ Offline — pakai data lokal');
+    setTimeout(hideSyncStatus, 3000);
+    renderAll();
   }
 }
 
-function saveAll() {
-  localStorage.setItem('ktg_teams', JSON.stringify(TEAMS));
-  localStorage.setItem('ktg_results', JSON.stringify(RESULTS));
-  localStorage.setItem('ktg_sponsors', JSON.stringify(SPONSORS));
+async function saveToCloud() {
+  if (isSyncing) return;
+  isSyncing = true;
+  showSyncStatus('💾 Menyimpan...');
+  try {
+    await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Access-Key': JSONBIN_KEY
+      },
+      body: JSON.stringify({ teams: TEAMS, results: RESULTS, sponsors: SPONSORS })
+    });
+    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS}));
+    showSyncStatus('✅ Tersimpan!');
+    setTimeout(hideSyncStatus, 2000);
+  } catch(e) {
+    showSyncStatus('❌ Gagal simpan — cek koneksi');
+    setTimeout(hideSyncStatus, 3000);
+  }
+  isSyncing = false;
 }
+
+function showSyncStatus(msg) {
+  let el = document.getElementById('syncStatus');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'syncStatus';
+    el.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:#1e2333;color:#c6ff00;padding:6px 16px;border-radius:0 0 10px 10px;font-size:11px;font-weight:800;letter-spacing:1px;z-index:999;border:1px solid rgba(198,255,0,0.2);border-top:none;transition:opacity 0.3s;max-width:300px;text-align:center;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+}
+
+function hideSyncStatus() {
+  const el = document.getElementById('syncStatus');
+  if (el) el.style.opacity = '0';
+}
+
+function load() {
+  // Load from local cache first for instant render
+  try {
+    const cache = JSON.parse(localStorage.getItem('ktg_cache'));
+    if (cache) {
+      TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors;
+    } else {
+      TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+      RESULTS = {}; SPONSORS = {s1:'',s2:'',extras:[]};
+    }
+  } catch(e) {
+    TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+    RESULTS = {}; SPONSORS = {s1:'',s2:'',extras:[]};
+  }
+}
+
+async function saveAll() {
+  await saveToCloud();
+}
+
+// Auto-refresh every 30 seconds for non-admin viewers
+setInterval(() => { if (!isAdmin) fetchFromCloud(); }, 30000);
 
 // ─── STATS ───
 function getStats() {
@@ -1102,6 +1198,13 @@ function renderHasil() {
 function renderSponsor() {
   document.getElementById('sp1name').textContent = SPONSORS.s1||'— Sponsor 1 —';
   document.getElementById('sp2name').textContent = SPONSORS.s2||'— Sponsor 2 —';
+  // extras (small sponsors in footer)
+  const extrasCon = document.getElementById('sponsorExtras');
+  if (!extrasCon) return;
+  const extras = SPONSORS.extras||[];
+  if (!extras.length) { extrasCon.style.display='none'; return; }
+  extrasCon.style.display='flex';
+  extrasCon.innerHTML = extras.map(s=>`<span class="sp-extra">${s}</span>`).join('<span class="sp-extra-dot">·</span>');
 }
 
 // ─── NAV ───
@@ -1142,13 +1245,10 @@ function switchTab(tab, el) {
   el.classList.add('active');
   if(tab==='tim')renderPedList();
   if(tab==='hasil')renderRubberPreview();
-  if(tab==='sponsor'){
-    document.getElementById('sp1in').value=SPONSORS.s1||'';
-    document.getElementById('sp2in').value=SPONSORS.s2||'';
-  }
+  if(tab==='sponsor') populateSponsorAdmin();
 }
 
-function saveRubber() {
+async function saveRubber() {
   const wi=parseInt(document.getElementById('inWeek').value);
   const mi=parseInt(document.getElementById('inMatch').value);
   const ri=parseInt(document.getElementById('inRubber').value);
@@ -1158,12 +1258,9 @@ function saveRubber() {
   if(!RESULTS[wi])RESULTS[wi]={};
   if(!RESULTS[wi][mi])RESULTS[wi][mi]={};
   RESULTS[wi][mi][ri]={sA,sB};
-  saveAll(); renderAll(); renderRubberPreview();
+  await saveAll(); renderAll(); renderRubberPreview();
   document.getElementById('inA').value='';
   document.getElementById('inB').value='';
-  const btn=document.getElementById('saveRubberBtn');
-  btn.textContent='✅ Tersimpan!';
-  setTimeout(()=>btn.textContent='💾 Simpan Rubber',1500);
 }
 
 function renderRubberPreview() {
@@ -1205,10 +1302,10 @@ function renderRubberPreview() {
   con.innerHTML=html;
 }
 
-function delRubber(wi,mi,ri){
+async function delRubber(wi,mi,ri){
   if(!confirm('Hapus hasil Rubber '+(ri+1)+' ini?'))return;
   if(RESULTS[wi]?.[mi]?.[ri]) delete RESULTS[wi][mi][ri];
-  saveAll(); renderAll(); renderRubberPreview();
+  await saveAll(); renderAll(); renderRubberPreview();
 }
 
 function editRubber(wi,mi,ri){
@@ -1234,30 +1331,35 @@ function renderPedList() {
     </div>`).join('');
 }
 
-function addPlayer() {
+async function addPlayer() {
   const ti=parseInt(document.getElementById('editTeamSel').value);
   const name=document.getElementById('newName').value.trim();
   const role=document.getElementById('newRole').value;
   if(!name){alert('Masukkan nama pemain');return;}
   if(!TEAMS[ti].players)TEAMS[ti].players=[];
   TEAMS[ti].players.push({name,role});
-  saveAll(); renderPedList(); renderAll();
+  await saveAll(); renderPedList(); renderAll();
   document.getElementById('newName').value='';
 }
 
-function delPlayer(ti,pi){
+async function delPlayer(ti,pi){
   if(!confirm(`Hapus ${TEAMS[ti].players[pi].name}?`))return;
   TEAMS[ti].players.splice(pi,1);
-  saveAll(); renderPedList(); renderAll();
+  await saveAll(); renderPedList(); renderAll();
 }
 
-function saveSponsor(){
+async function saveSponsor(){
   SPONSORS.s1=document.getElementById('sp1in').value.trim();
   SPONSORS.s2=document.getElementById('sp2in').value.trim();
-  saveAll(); renderSponsor();
-  const btn=document.getElementById('saveSponsorBtn');
-  btn.textContent='✅ Sponsor disimpan!';
-  setTimeout(()=>btn.textContent='💾 Simpan Sponsor',1500);
+  const extrasRaw=document.getElementById('spExtraIn').value.trim();
+  SPONSORS.extras=extrasRaw?extrasRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
+  await saveAll(); renderSponsor();
+}
+
+function populateSponsorAdmin(){
+  document.getElementById('sp1in').value=SPONSORS.s1||'';
+  document.getElementById('sp2in').value=SPONSORS.s2||'';
+  document.getElementById('spExtraIn').value=(SPONSORS.extras||[]).join(', ');
 }
 
 function openOv(id){document.getElementById(id).classList.add('on');}
@@ -1268,8 +1370,9 @@ document.querySelectorAll('.overlay').forEach(ov=>{
 });
 
 // ─── INIT ───
-load();
+load();        // instant render from local cache
 renderAll();
+fetchFromCloud(); // then sync from cloud
 </script>
 </body>
 </html>
