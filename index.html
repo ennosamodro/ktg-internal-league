@@ -746,6 +746,7 @@ body::before {
       <tbody id="standBody"></tbody>
     </table>
     <div class="legend">M=Main · W=Menang · L=Kalah · RW=Rubber Menang · RL=Rubber Kalah · Tiebreaker: Rubber ratio</div>
+    <div id="grandFinalCard" style="padding:0 20px 20px;"></div>
   </div>
 </div>
 
@@ -1011,7 +1012,7 @@ async function saveAll() {
 function getStats() {
   const s = TEAMS.map(t => ({...t, played:0, won:0, lost:0, rw:0, rl:0, points:0}));
   SCHEDULE.forEach((week, wi) => {
-    if (wi===4) return;
+    if (wi===3) return; // skip Grand Final from regular standings
     week.matches.forEach((match, mi) => {
       const [a,b] = match;
       if (a<0||b<0) return;
@@ -1088,6 +1089,51 @@ function renderStandings() {
     `;
     tbody.appendChild(tr);
   });
+
+  // Grand Final card below klasemen
+  const gfCard = document.getElementById('grandFinalCard');
+  if(gfCard){
+    const allRegDone = [0,1,2].every(wi => SCHEDULE[wi].matches.every((_,mi) => RESULTS[wi]?.[mi]));
+    const finalRes = RESULTS[3]?.[0];
+    
+    if(finalRes){
+      // hasil Grand Final sudah ada
+      let wA=0,wB=0;
+      for(let r=0;r<3;r++){const rb=finalRes[r];if(!rb)continue;if(rb.sA>rb.sB)wA++;else if(rb.sB>rb.sA)wB++;}
+      const champ = wA>wB ? stats[0] : stats[1];
+      const runner = wA>wB ? stats[1] : stats[0];
+      gfCard.innerHTML=`<div style="background:linear-gradient(135deg,rgba(198,255,0,0.08),rgba(255,214,0,0.06));border:1px solid rgba(198,255,0,0.2);border-radius:16px;padding:20px;text-align:center;margin-top:12px;">
+        <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:10px">🏆 Grand Final</div>
+        <div style="font-size:11px;color:var(--gray);font-weight:800;margin-bottom:4px">👑 JUARA</div>
+        <div style="font-family:'Anton',sans-serif;font-size:28px;letter-spacing:2px;color:var(--lime)">${champ?.name||'—'}</div>
+        <div style="font-size:11px;color:var(--gray);margin-top:10px;font-weight:700">🥈 Runner-up: ${runner?.name||'—'}</div>
+      </div>`;
+    } else if(allRegDone){
+      // semua regular selesai — tampil matchup
+      const t1=stats[0], t2=stats[1];
+      gfCard.innerHTML=`<div style="background:linear-gradient(135deg,rgba(255,214,0,0.08),rgba(255,214,0,0.04));border:1px solid rgba(255,214,0,0.2);border-radius:16px;padding:20px;text-align:center;margin-top:12px;">
+        <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:14px">🏆 Grand Final</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:16px;">
+          <div>
+            <div class="tdot" style="background:${t1?.color};width:12px;height:12px;margin:0 auto 6px"></div>
+            <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t1?.name.replace('Tim ','')||'?'}</div>
+            <div style="font-size:9px;color:var(--lime);font-weight:800;letter-spacing:1px">#1</div>
+          </div>
+          <div style="font-family:'Oswald',sans-serif;font-size:18px;color:var(--gray);letter-spacing:3px">VS</div>
+          <div>
+            <div class="tdot" style="background:${t2?.color};width:12px;height:12px;margin:0 auto 6px"></div>
+            <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t2?.name.replace('Tim ','')||'?'}</div>
+            <div style="font-size:9px;color:var(--yellow);font-weight:800;letter-spacing:1px">#2</div>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      gfCard.innerHTML=`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:16px;padding:16px;text-align:center;margin-top:12px;">
+        <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:6px">🏆 Grand Final</div>
+        <div style="font-size:11px;color:var(--gray);font-weight:700">Top 2 klasemen — ditentukan setelah Minggu 3</div>
+      </div>`;
+    }
+  }
 }
 
 function renderJadwal() {
@@ -1223,21 +1269,31 @@ function renderHasil() {
   const con = document.getElementById('hasilCon');
   con.innerHTML='';
   let any=false;
+  const stats = getStats();
+  
   SCHEDULE.forEach((week,wi)=>{
     week.matches.forEach((match,mi)=>{
-      const [a,b]=match; if(a<0||b<0)return;
+      let [a,b]=match;
+      
+      // Grand Final — auto-resolve top 2
+      if(wi===3 && a<0 && b<0){
+        const allRegDone = [0,1,2].every(w => SCHEDULE[w].matches.every((_,m) => RESULTS[w]?.[m]));
+        if(allRegDone && stats[0] && stats[1]){ a=stats[0].id; b=stats[1].id; }
+        else return;
+      }
+      if(a<0||b<0) return;
+      
       const wr=RESULTS[wi]?.[mi]; if(!wr)return;
       any=true;
       const grp=document.createElement('div');
       grp.className='match-group';
-      const weekLbl = wi===3?'Grand Final':`Minggu ${week.week}`;
+      const weekLbl = wi===3?'🏆 Grand Final':`Minggu ${week.week}`;
       grp.innerHTML=`<div class="mgroup-hdr">${weekLbl} · ${TEAMS[a]?.name||'?'} vs ${TEAMS[b]?.name||'?'}</div>`;
       for(let r=0;r<3;r++){
         const rb=wr[r]; if(!rb)continue;
         const aW=rb.sA>rb.sB;
         const div=document.createElement('div');
         div.className='rub'; div.style.animationDelay=(r*0.07)+'s';
-        // player names
         const pA = (rb.playersA||[]).join(' · ') || '';
         const pB = (rb.playersB||[]).join(' · ') || '';
         div.innerHTML=`
@@ -1381,40 +1437,54 @@ function renderRubberPreview() {
   const con=document.getElementById('rubberPreview');
   if(!con)return;
 
-  const match=SCHEDULE[wi]?.matches[mi];
-  const [a,b]=match||[-1,-1];
+  let match=SCHEDULE[wi]?.matches[mi];
+  let [a,b]=match||[-1,-1];
+  
+  // Grand Final — auto-resolve top 2 from standings
+  if(wi===3 && a<0 && b<0){
+    const stats=getStats();
+    const allRegDone = [0,1,2].every(w => SCHEDULE[w].matches.every((_,m) => RESULTS[w]?.[m]));
+    if(allRegDone && stats[0] && stats[1]){
+      a=stats[0].id; b=stats[1].id;
+    }
+  }
+
   const wr=RESULTS[wi]?.[mi];
   const tAn = a>=0?(TEAMS[a]?.name.replace('Tim ','')||'A'):'A';
   const tBn = b>=0?(TEAMS[b]?.name.replace('Tim ','')||'B'):'B';
 
-  let html=`<div style="font-size:9px;letter-spacing:2px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:8px">
-    ${a>=0?`${tAn} vs ${tBn}`:'—'} · Rubber yang sudah diinput
-  </div>`;
-
-  let any=false;
-  for(let r=0;r<3;r++){
-    const rb=wr?.[r];
-    if(!rb)continue;
-    any=true;
-    const aW=rb.sA>rb.sB;
-    const pA=(rb.playersA||[]).join(' · ');
-    const pB=(rb.playersB||[]).join(' · ');
-    html+=`<div class="rub-prev">
-      <div class="rub-prev-lbl">RBR ${r+1}</div>
-      <div style="flex:1">
-        <div class="rub-prev-score">
-          <span style="color:${aW?'var(--lime)':'var(--gray)'}">${rb.sA}</span>
-          <span style="color:var(--gray);font-size:13px"> – </span>
-          <span style="color:${!aW?'var(--lime)':'var(--gray)'}">${rb.sB}</span>
-        </div>
-        ${pA||pB?`<div style="font-size:10px;color:var(--gray);margin-top:2px">${pA||'—'} vs ${pB||'—'}</div>`:''}
-      </div>
-      <button class="rub-prev-edit" title="Edit" onclick="editRubber(${wi},${mi},${r})">✏️</button>
-      <button class="rub-prev-del" title="Hapus" onclick="delRubber(${wi},${mi},${r})">×</button>
+  let html='';
+  if(wi===3 && a<0){
+    html+=`<div class="rub-empty-msg">⚠️ Selesaikan Minggu 1–3 dulu untuk menentukan peserta Grand Final</div>`;
+  } else {
+    html+=`<div style="font-size:9px;letter-spacing:2px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:8px">
+      ${a>=0?`${tAn} vs ${tBn}`:'—'} · Rubber yang sudah diinput
     </div>`;
-  }
 
-  if(!any) html+=`<div class="rub-empty-msg">Belum ada rubber untuk match ini</div>`;
+    let any=false;
+    for(let r=0;r<3;r++){
+      const rb=wr?.[r];
+      if(!rb)continue;
+      any=true;
+      const aW=rb.sA>rb.sB;
+      const pA=(rb.playersA||[]).join(' · ');
+      const pB=(rb.playersB||[]).join(' · ');
+      html+=`<div class="rub-prev">
+        <div class="rub-prev-lbl">RBR ${r+1}</div>
+        <div style="flex:1">
+          <div class="rub-prev-score">
+            <span style="color:${aW?'var(--lime)':'var(--gray)'}">${rb.sA}</span>
+            <span style="color:var(--gray);font-size:13px"> – </span>
+            <span style="color:${!aW?'var(--lime)':'var(--gray)'}">${rb.sB}</span>
+          </div>
+          ${pA||pB?`<div style="font-size:10px;color:var(--gray);margin-top:2px">${pA||'—'} vs ${pB||'—'}</div>`:''}
+        </div>
+        <button class="rub-prev-edit" title="Edit" onclick="editRubber(${wi},${mi},${r})">✏️</button>
+        <button class="rub-prev-del" title="Hapus" onclick="delRubber(${wi},${mi},${r})">×</button>
+      </div>`;
+    }
+    if(!any) html+=`<div class="rub-empty-msg">Belum ada rubber untuk match ini</div>`;
+  }
   con.innerHTML=html;
   renderPlayerChips(a, b);
 }
