@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>KTG Liga S04 · Ketintang Tennis Group</title>
+<title>KTG Liga S05 · Ketintang Tennis Group</title>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Nunito:wght@400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
@@ -626,7 +626,7 @@ body::before {
 }
 .rub-prev-lbl { font-size: 10px; letter-spacing: 1px; color: var(--gray2); font-weight: 800; width: 52px; flex-shrink: 0; }
 .rub-prev-score { flex: 1; font-family: 'Anton', sans-serif; font-size: 17px; letter-spacing: 3px; color: var(--lime); }
-.rub-prev-del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; padding: 2px 6px; }
+.rub-prev-del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 18px; padding: 2px 6px; position: relative; z-index: 10; pointer-events: all; }
 .rub-prev-edit { background: none; border: none; color: var(--gray2); cursor: pointer; font-size: 14px; padding: 2px 6px; }
 .rub-empty-msg { font-size: 11px; color: var(--gray); font-weight: 700; padding: 8px 0; text-align: center; }
 .ped-row {
@@ -660,9 +660,11 @@ body::before {
 .sp-extras-wrap {
   display: none;
   flex-wrap: wrap; align-items: center; justify-content: center;
-  gap: 8px; padding: 10px 20px;
+  gap: 8px; padding: 12px 20px;
   border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: rgba(255,255,255,0.02);
+  margin-bottom: 0;
 }
 .sp-extra { font-size: 10px; font-weight: 800; color: var(--gray2); letter-spacing: 1px; text-transform: uppercase; }
 .sp-extra-dot { color: rgba(255,255,255,0.1); font-size: 10px; }
@@ -696,22 +698,14 @@ body::before {
       <p>Ketintang Tennis Group</p>
     </div>
     <div class="liga-badge">
-      <span class="liga-badge-inner" id="ligaBadge">LIGA S04</span>
+      <span class="liga-badge-inner" id="ligaBadge">LIGA S05</span>
     </div>
   </div>
 
   <!-- SPONSOR STRIP -->
-  <div class="sponsor-strip">
+  <div class="sponsor-strip" id="sponsorStrip">
     <span class="sp-label">Presented by</span>
-    <div style="display:flex;align-items:center;gap:8px;height:30px;">
-      <img id="sp1logo" src="" alt="Sponsor 1" style="max-height:30px;max-width:100px;display:none;object-fit:contain;">
-      <span class="sp-name" id="sp1name">— Sponsor 1 —</span>
-    </div>
-    <div class="sp-div"></div>
-    <div style="display:flex;align-items:center;gap:8px;height:30px;">
-      <img id="sp2logo" src="" alt="Sponsor 2" style="max-height:30px;max-width:100px;display:none;object-fit:contain;">
-      <span class="sp-name" id="sp2name">— Sponsor 2 —</span>
-    </div>
+    <div id="mainSponsors" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;"></div>
   </div>
 </div>
 
@@ -746,7 +740,8 @@ body::before {
       <tbody id="standBody"></tbody>
     </table>
     <div class="legend">M=Main · W=Menang · L=Kalah · RW=Rubber Menang · RL=Rubber Kalah · Tiebreaker: Rubber ratio</div>
-    <div id="grandFinalCard" style="padding:0 20px 20px;"></div>
+    <div id="grandFinalCard" style="padding:0 20px 12px;"></div>
+    <div class="sp-extras-wrap" id="sponsorExtras"></div>
   </div>
 </div>
 
@@ -764,9 +759,6 @@ body::before {
 <div class="section" id="tab-hasil">
   <div class="hasil-inner" id="hasilCon"></div>
 </div>
-
-<!-- SMALL SPONSORS STRIP -->
-<div class="sp-extras-wrap" id="sponsorExtras"></div>
 
 <!-- FOOTER -->
 <div class="footer">
@@ -855,31 +847,27 @@ body::before {
         </select>
         <div id="pedList" style="margin:10px 0;min-height:50px;"></div>
         <label class="mlabel">Tambah Pemain</label>
-        <div class="row2">
-          <input type="text" id="newName" placeholder="Nama pemain">
-          <select id="newRole">
-            <option value="member">Member</option>
-            <option value="anchor">Anchor</option>
-          </select>
-        </div>
+        <input type="text" id="newName" placeholder="Nama pemain">
+        <select id="newRole">
+          <option value="member">Member</option>
+          <option value="anchor">Anchor ⚡</option>
+        </select>
         <button class="mbtn" onclick="addPlayer()">+ Tambah Pemain</button>
       </div>
 
       <!-- SPONSOR -->
       <div class="atab" id="atab-sponsor">
-        <label class="mlabel">Sponsor Utama 1 - Nama</label>
-        <input type="text" id="sp1in" placeholder="ex: Bromen Men Grooming">
-        <label class="mlabel">Sponsor Utama 1 - Logo URL (GitHub raw)</label>
-        <input type="text" id="sp1url" placeholder="https://raw.githubusercontent.com/...">
-        
-        <label class="mlabel" style="margin-top:12px;">Sponsor Utama 2 - Nama</label>
-        <input type="text" id="sp2in" placeholder="ex: Sirtanio Organik">
-        <label class="mlabel">Sponsor Utama 2 - Logo URL (GitHub raw)</label>
-        <input type="text" id="sp2url" placeholder="https://raw.githubusercontent.com/...">
-        
-        <label class="mlabel" style="margin-top:12px;">Sponsor Pendukung (pisah koma, tampil kecil di bawah)</label>
-        <input type="text" id="spExtraIn" placeholder="ex: Toko Raket A, Apotek B, Klinik C">
-        <button class="mbtn" id="saveSponsorBtn" onclick="saveSponsor()">💾 Simpan Sponsor</button>
+        <div style="font-size:9px;letter-spacing:2px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:10px">Sponsor Utama (Header)</div>
+        <div id="mainSpList" style="margin-bottom:10px;"></div>
+        <label class="mlabel">Nama Sponsor Baru</label>
+        <input type="text" id="spNewName" placeholder="ex: Bromen Men Grooming">
+        <label class="mlabel">URL Logo (opsional, GitHub raw)</label>
+        <input type="text" id="spNewUrl" placeholder="https://raw.githubusercontent.com/...">
+        <button class="mbtn" onclick="addMainSponsor()" style="margin-bottom:16px;">+ Tambah Sponsor Utama</button>
+
+        <label class="mlabel">Sponsor Pendukung (pisah koma, tampil kecil di bawah)</label>
+        <input type="text" id="spExtraIn" placeholder="ex: Kebab, Bakmi Saudagar">
+        <button class="mbtn" id="saveSponsorBtn" onclick="saveSponsor()">💾 Simpan Semua Sponsor</button>
       </div>
 
       <button class="mbtn sec" onclick="closeOv('ov-admin')">Tutup</button>
@@ -927,7 +915,7 @@ async function fetchFromCloud() {
     const record = data.record;
     TEAMS = record.teams?.length ? record.teams : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
     RESULTS = record.results || {};
-    SPONSORS = record.sponsors || {s1:'',s2:'',extras:[]};
+    SPONSORS = record.sponsors || {mains:[], extras:[]};
     // cache locally for offline fallback
     localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS}));
     hideSyncStatus();
@@ -937,7 +925,7 @@ async function fetchFromCloud() {
     try {
       const cache = JSON.parse(localStorage.getItem('ktg_cache'));
       if (cache) {
-        TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors;
+        TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
       }
     } catch(e2) {}
     showSyncStatus('⚠️ Offline — pakai data lokal');
@@ -991,14 +979,14 @@ function load() {
   try {
     const cache = JSON.parse(localStorage.getItem('ktg_cache'));
     if (cache) {
-      TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors;
+      TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
     } else {
       TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
-      RESULTS = {}; SPONSORS = {s1:'',s2:'',extras:[]};
+      RESULTS = {}; SPONSORS = {mains:[], extras:[]};
     }
   } catch(e) {
     TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
-    RESULTS = {}; SPONSORS = {s1:'',s2:'',extras:[]};
+    RESULTS = {}; SPONSORS = {mains:[], extras:[]};
   }
 }
 
@@ -1009,6 +997,22 @@ async function saveAll() {
 // Manual refresh only — user taps 🔄 button
 
 // ─── STATS ───
+// Match dianggap selesai kalau minimal 2 rubber punya skor valid (bukan cuma ada data)
+function isMatchComplete(wi, mi) {
+  const wr = RESULTS[wi]?.[mi];
+  if(!wr) return false;
+  let validRubbers = 0;
+  for(let r=0;r<3;r++){
+    const rb = wr[r];
+    if(rb && (rb.sA > 0 || rb.sB > 0) && !isNaN(rb.sA) && !isNaN(rb.sB)) validRubbers++;
+  }
+  return validRubbers >= 2;
+}
+
+function isAllRegDone() {
+  return [0,1,2].every(wi => SCHEDULE[wi].matches.every((_,mi) => isMatchComplete(wi, mi)));
+}
+
 function getStats() {
   const s = TEAMS.map(t => ({...t, played:0, won:0, lost:0, rw:0, rl:0, points:0}));
   SCHEDULE.forEach((week, wi) => {
@@ -1093,7 +1097,7 @@ function renderStandings() {
   // Grand Final card below klasemen
   const gfCard = document.getElementById('grandFinalCard');
   if(gfCard){
-    const allRegDone = [0,1,2].every(wi => SCHEDULE[wi].matches.every((_,mi) => RESULTS[wi]?.[mi]));
+    
     const finalRes = RESULTS[3]?.[0];
     
     if(finalRes){
@@ -1108,7 +1112,7 @@ function renderStandings() {
         <div style="font-family:'Anton',sans-serif;font-size:28px;letter-spacing:2px;color:var(--lime)">${champ?.name||'—'}</div>
         <div style="font-size:11px;color:var(--gray);margin-top:10px;font-weight:700">🥈 Runner-up: ${runner?.name||'—'}</div>
       </div>`;
-    } else if(allRegDone){
+    } else if(isAllRegDone()){
       // semua regular selesai — tampil matchup
       const t1=stats[0], t2=stats[1];
       gfCard.innerHTML=`<div style="background:linear-gradient(135deg,rgba(255,214,0,0.08),rgba(255,214,0,0.04));border:1px solid rgba(255,214,0,0.2);border-radius:16px;padding:20px;text-align:center;margin-top:12px;">
@@ -1140,11 +1144,12 @@ function renderJadwal() {
   const con = document.getElementById('jadwalCon');
   con.innerHTML = '';
   const stats = getStats();
-  const allRegDone = [0,1,2].every(wi => SCHEDULE[wi].matches.every((_,mi) => RESULTS[wi]?.[mi]));
+  
 
   SCHEDULE.forEach((week, wi) => {
     const isFinal = wi===3;
-    const hasRes = isFinal ? RESULTS[3]?.[0] : week.matches.some((_,mi)=>RESULTS[wi]?.[mi]);
+    const hasRes = isFinal ? isMatchComplete(3,0) : week.matches.every((_,mi)=>isMatchComplete(wi,mi));
+    const someRes = isFinal ? RESULTS[3]?.[0] : week.matches.some((_,mi)=>RESULTS[wi]?.[mi]);
     const cls = isFinal?'wb-final':hasRes?'wb-done':'wb-up';
     const txt = isFinal?'🏆 Final':hasRes?'✅ Selesai':'🔜 Upcoming';
     
@@ -1158,7 +1163,7 @@ function renderJadwal() {
     week.matches.forEach((match, mi) => {
       const [a,b] = match;
       const card = document.createElement('div');
-      card.className = 'mcard'+(hasRes?' done':'');
+      card.className = 'mcard'+(someRes?' done':'');
       card.style.animationDelay = (wi*0.07+mi*0.04)+'s';
 
       if(a<0||b<0){
@@ -1176,7 +1181,7 @@ function renderJadwal() {
             <div style="font-family:'Anton',sans-serif;font-size:26px;letter-spacing:2px;color:var(--lime)">${champ?.name||'—'}</div>
             <div style="font-size:11px;color:var(--gray);margin-top:10px;font-weight:700">🥈 Runner-up: ${runner?.name||'—'}</div>
           </div>`;
-        } else if (allRegDone) {
+        } else if (isAllRegDone()) {
           // semua minggu 1-3 selesai — tampil top 2
           const t1 = stats[0], t2 = stats[1];
           card.innerHTML=`<div style="text-align:center;padding:10px 0;">
@@ -1277,8 +1282,8 @@ function renderHasil() {
       
       // Grand Final — auto-resolve top 2
       if(wi===3 && a<0 && b<0){
-        const allRegDone = [0,1,2].every(w => SCHEDULE[w].matches.every((_,m) => RESULTS[w]?.[m]));
-        if(allRegDone && stats[0] && stats[1]){ a=stats[0].id; b=stats[1].id; }
+        
+        if(isAllRegDone() && stats[0] && stats[1]){ a=stats[0].id; b=stats[1].id; }
         else return;
       }
       if(a<0||b<0) return;
@@ -1322,30 +1327,25 @@ function renderHasil() {
 }
 
 function renderSponsor() {
-  // Sponsor 1
-  const sp1name = document.getElementById('sp1name');
-  const sp1logo = document.getElementById('sp1logo');
-  if (SPONSORS.s1url) {
-    sp1logo.src = SPONSORS.s1url;
-    sp1logo.style.display = 'block';
-    sp1name.textContent = '';
-  } else {
-    sp1logo.style.display = 'none';
-    sp1name.textContent = SPONSORS.s1 || '— Sponsor 1 —';
-  }
+  // Main sponsors — dynamic list
+  const mainCon = document.getElementById('mainSponsors');
+  const mains = SPONSORS.mains || [];
   
-  // Sponsor 2
-  const sp2name = document.getElementById('sp2name');
-  const sp2logo = document.getElementById('sp2logo');
-  if (SPONSORS.s2url) {
-    sp2logo.src = SPONSORS.s2url;
-    sp2logo.style.display = 'block';
-    sp2name.textContent = '';
-  } else {
-    sp2logo.style.display = 'none';
-    sp2name.textContent = SPONSORS.s2 || '— Sponsor 2 —';
+  if(mainCon){
+    if(!mains.length){
+      mainCon.innerHTML = `<span class="sp-name">— Sponsor —</span>`;
+    } else {
+      mainCon.innerHTML = mains.map((sp, i) => {
+        const divider = i > 0 ? `<div class="sp-div"></div>` : '';
+        if(sp.url){
+          return `${divider}<img src="${sp.url}" alt="${sp.name}" style="max-height:28px;max-width:90px;object-fit:contain;">`;
+        } else {
+          return `${divider}<span class="sp-name">${sp.name}</span>`;
+        }
+      }).join('');
+    }
   }
-  
+
   // extras (small sponsors in footer)
   const extrasCon = document.getElementById('sponsorExtras');
   if (!extrasCon) return;
@@ -1443,8 +1443,8 @@ function renderRubberPreview() {
   // Grand Final — auto-resolve top 2 from standings
   if(wi===3 && a<0 && b<0){
     const stats=getStats();
-    const allRegDone = [0,1,2].every(w => SCHEDULE[w].matches.every((_,m) => RESULTS[w]?.[m]));
-    if(allRegDone && stats[0] && stats[1]){
+    
+    if(isAllRegDone() && stats[0] && stats[1]){
       a=stats[0].id; b=stats[1].id;
     }
   }
@@ -1542,21 +1542,53 @@ async function delPlayer(ti,pi){
   await saveAll(); renderPedList(); renderAll();
 }
 
+function renderMainSpList() {
+  const con = document.getElementById('mainSpList');
+  if(!con) return;
+  const mains = SPONSORS.mains || [];
+  if(!mains.length){ 
+    con.innerHTML=`<div style="font-size:11px;color:var(--gray);padding:6px 0">Belum ada sponsor utama</div>`; 
+    return; 
+  }
+  con.innerHTML = mains.map((sp,i)=>`
+    <div class="rub-prev" style="margin-bottom:6px;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:800;color:var(--white)">${sp.name}</div>
+        ${sp.url?`<div style="font-size:10px;color:var(--gray);margin-top:2px;word-break:break-all">${sp.url}</div>`:''}
+      </div>
+      <button style="background:none;border:none;color:#ff4757;cursor:pointer;font-size:22px;padding:4px 8px;position:relative;z-index:10;line-height:1;" onclick="delMainSponsor(${i})">×</button>
+    </div>`).join('');
+}
+
+async function addMainSponsor() {
+  const name = document.getElementById('spNewName').value.trim();
+  const url = document.getElementById('spNewUrl').value.trim();
+  if(!name){ alert('Isi nama sponsor dulu!'); return; }
+  if(!SPONSORS.mains) SPONSORS.mains = [];
+  SPONSORS.mains.push({name, url});
+  document.getElementById('spNewName').value='';
+  document.getElementById('spNewUrl').value='';
+  await saveAll();
+  renderMainSpList();
+  renderSponsor();
+}
+
+async function delMainSponsor(i) {
+  SPONSORS.mains.splice(i,1);
+  await saveAll();
+  renderMainSpList();
+  renderSponsor();
+}
+
 async function saveSponsor(){
-  SPONSORS.s1=document.getElementById('sp1in').value.trim();
-  SPONSORS.s1url=document.getElementById('sp1url').value.trim();
-  SPONSORS.s2=document.getElementById('sp2in').value.trim();
-  SPONSORS.s2url=document.getElementById('sp2url').value.trim();
+  if(!SPONSORS.mains) SPONSORS.mains=[];
   const extrasRaw=document.getElementById('spExtraIn').value.trim();
   SPONSORS.extras=extrasRaw?extrasRaw.split(',').map(s=>s.trim()).filter(Boolean):[];
   await saveAll(); renderSponsor();
 }
 
 function populateSponsorAdmin(){
-  document.getElementById('sp1in').value=SPONSORS.s1||'';
-  document.getElementById('sp1url').value=SPONSORS.s1url||'';
-  document.getElementById('sp2in').value=SPONSORS.s2||'';
-  document.getElementById('sp2url').value=SPONSORS.s2url||'';
+  renderMainSpList();
   document.getElementById('spExtraIn').value=(SPONSORS.extras||[]).join(', ');
 }
 
