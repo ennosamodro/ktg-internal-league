@@ -1067,7 +1067,8 @@ function isMatchComplete(wi, mi) {
     const rb = wr[r];
     if(rb && (rb.sA > 0 || rb.sB > 0) && !isNaN(rb.sA) && !isNaN(rb.sB)) validRubbers++;
   }
-  return validRubbers >= 2;
+  const required = (wi === 3) ? 3 : 2; // GF wajib 3 rubber semua
+  return validRubbers >= required;
 }
 
 function isAllRegDone() {
@@ -1179,24 +1180,42 @@ function renderStandings() {
         <div style="font-size:11px;color:var(--gray);margin-top:10px;font-weight:700">🥈 Runner-up: ${runner?.name||'—'}</div>
       </div>`;
     } else if(isAllRegDone()){
-      // semua regular selesai — tampil matchup
+      // semua regular selesai — cek apakah ada rubber yang sudah masuk
       const [t1,t2]=getFinalists(stats);
       const overrideNote = FINAL_OVERRIDE ? '<div style="font-size:9px;color:var(--yellow);margin-top:8px;opacity:0.7">⚡ Manual Override aktif</div>' : '';
+      
+      // Hitung skor rubber yang sudah masuk
+      let wA=0, wB=0, rubberRows='';
+      if(finalRes) {
+        for(let r=0;r<3;r++){
+          const rb=finalRes[r];
+          if(!rb) continue;
+          const aWin = rb.sA>rb.sB;
+          if(aWin) wA++; else wB++;
+          rubberRows += `<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:4px;font-size:11px;">
+            <span style="color:${aWin?'var(--lime)':'var(--gray)'};font-weight:${aWin?'800':'400'}">${rb.sA}</span>
+            <span style="color:var(--gray);font-size:9px">R${r+1}</span>
+            <span style="color:${!aWin?'var(--lime)':'var(--gray)'};font-weight:${!aWin?'800':'400'}">${rb.sB}</span>
+          </div>`;
+        }
+      }
+      
+      const hasLiveScore = wA+wB > 0;
       gfCard.innerHTML=`<div style="background:linear-gradient(135deg,rgba(255,214,0,0.08),rgba(255,214,0,0.04));border:1px solid rgba(255,214,0,0.2);border-radius:16px;padding:20px;text-align:center;margin-top:12px;">
-        <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:14px">🏆 Grand Final</div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:16px;">
+        <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:14px">🏆 Grand Final ${hasLiveScore?'· LIVE':''}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:${hasLiveScore?'12px':'0'};">
           <div>
             <div class="tdot" style="background:${t1?.color};width:12px;height:12px;margin:0 auto 6px"></div>
             <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t1?.name.replace('Tim ','')||'?'}</div>
-            <div style="font-size:9px;color:var(--lime);font-weight:800;letter-spacing:1px">#1</div>
           </div>
-          <div style="font-family:'Oswald',sans-serif;font-size:18px;color:var(--gray);letter-spacing:3px">VS</div>
+          <div style="font-family:'Anton',sans-serif;font-size:28px;letter-spacing:2px;color:var(--white);min-width:60px;text-align:center">${hasLiveScore?`<span style="color:${wA>wB?'var(--lime)':'var(--white)'}">${wA}</span>–<span style="color:${wB>wA?'var(--lime)':'var(--white)'}">${wB}</span>`:'VS'}</div>
           <div>
             <div class="tdot" style="background:${t2?.color};width:12px;height:12px;margin:0 auto 6px"></div>
             <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t2?.name.replace('Tim ','')||'?'}</div>
-            <div style="font-size:9px;color:var(--yellow);font-weight:800;letter-spacing:1px">#2</div>
           </div>
         </div>
+        ${hasLiveScore?`<div style="margin-bottom:8px">${rubberRows}</div>`:''}
+        ${hasLiveScore?`<div style="font-size:10px;color:var(--gray);font-weight:700">${3-(wA+wB)} rubber tersisa</div>`:''}
         ${overrideNote}
       </div>`;
     } else {
