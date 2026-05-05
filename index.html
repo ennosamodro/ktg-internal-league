@@ -886,6 +886,12 @@ body::before {
         </select>
         <button class="mbtn" onclick="saveOverride()" style="margin-bottom:10px;">⚡ Aktifkan Override</button>
         <button class="mbtn sec" onclick="clearOverride()">✕ Hapus Override (pakai auto)</button>
+        
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <div style="font-size:9px;letter-spacing:2px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:8px">🗑 Reset Hasil Grand Final</div>
+          <div style="font-size:11px;color:var(--gray);margin-bottom:12px;line-height:1.5">Hapus semua hasil Match 1 & Match 2 Grand Final. Data minggu 1–3 tidak terpengaruh.</div>
+          <button class="mbtn" style="background:rgba(255,70,70,0.15);border:1px solid rgba(255,70,70,0.4);color:#ff6b6b;" onclick="resetGrandFinal()">🗑 Reset Hasil Grand Final</button>
+        </div>
       </div>
 
       <button class="mbtn sec" onclick="closeOv('ov-admin')">Tutup</button>
@@ -1159,8 +1165,8 @@ function renderStandings() {
     
     const finalRes = RESULTS[3]?.[0];
     
-    if(finalRes){
-      // hasil Grand Final sudah ada
+    if(isMatchComplete(3, 0)){
+      // Grand Final Match 1 selesai — tampil juara
       const [gfT1, gfT2] = getFinalists(stats);
       let wA=0,wB=0;
       for(let r=0;r<3;r++){const rb=finalRes[r];if(!rb)continue;if(rb.sA>rb.sB)wA++;else if(rb.sB>rb.sA)wB++;}
@@ -1237,7 +1243,7 @@ function renderJadwal() {
         const teamB = isMatch1 ? gfT2 : stats[3];
         const finalRes = RESULTS[3]?.[mi];
 
-        if (finalRes) {
+        if (isMatchComplete(3, mi)) {
           let wA=0,wB=0;
           for(let r=0;r<3;r++){const rb=finalRes[r];if(!rb)continue;if(rb.sA>rb.sB)wA++;else if(rb.sB>rb.sA)wB++;}
           const winner = wA>wB ? teamA : teamB;
@@ -1515,6 +1521,14 @@ async function clearOverride() {
   document.getElementById('ovT2').value = '';
   await saveAll();
   renderAll();
+}
+
+async function resetGrandFinal() {
+  if(!confirm('Reset semua hasil Grand Final? Data minggu 1–3 aman.')) return;
+  if(RESULTS[3]) delete RESULTS[3];
+  await saveAll();
+  renderAll();
+  alert('✅ Hasil Grand Final berhasil direset!');
 }
 
 async function saveRubber() {
