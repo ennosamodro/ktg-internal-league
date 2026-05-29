@@ -864,6 +864,8 @@ body::before {
         <input type="text" id="spNewName" placeholder="ex: Bromen Men Grooming">
         <label class="mlabel">URL Logo (opsional, GitHub raw)</label>
         <input type="text" id="spNewUrl" placeholder="https://raw.githubusercontent.com/...">
+        <label class="mlabel">Link Instagram (opsional)</label>
+        <input type="text" id="spNewIg" placeholder="https://instagram.com/namabrand">
         <button class="mbtn" onclick="addMainSponsor()" style="margin-bottom:16px;">+ Tambah Sponsor Utama</button>
 
         <label class="mlabel">Sponsor Pendukung (pisah koma, tampil kecil di bawah)</label>
@@ -1434,11 +1436,13 @@ function renderSponsor() {
     } else {
       mainCon.innerHTML = mains.map((sp, i) => {
         const divider = i > 0 ? `<div class="sp-div"></div>` : '';
-        if(sp.url){
-          return `${divider}<img src="${sp.url}" alt="${sp.name}" style="max-height:28px;max-width:90px;object-fit:contain;">`;
-        } else {
-          return `${divider}<span class="sp-name">${sp.name}</span>`;
+        const inner = sp.url
+          ? `<img src="${sp.url}" alt="${sp.name}" style="max-height:50px;max-width:120px;object-fit:contain;">`
+          : `<span class="sp-name">${sp.name}</span>`;
+        if(sp.ig){
+          return `${divider}<a href="${sp.ig}" target="_blank" rel="noopener" style="display:flex;align-items:center;text-decoration:none;">${inner}</a>`;
         }
+        return `${divider}${inner}`;
       }).join('');
     }
   }
@@ -1710,6 +1714,7 @@ function renderMainSpList() {
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:800;color:var(--white)">${sp.name}</div>
         ${sp.url?`<div style="font-size:10px;color:var(--gray);margin-top:2px;word-break:break-all">${sp.url}</div>`:''}
+        ${sp.ig?`<div style="font-size:10px;color:var(--lime);margin-top:2px;">📸 ${sp.ig}</div>`:''}
       </div>
       <button style="background:none;border:none;color:#ff4757;cursor:pointer;font-size:22px;padding:4px 8px;position:relative;z-index:10;line-height:1;" onclick="delMainSponsor(${i})">×</button>
     </div>`).join('');
@@ -1718,11 +1723,13 @@ function renderMainSpList() {
 async function addMainSponsor() {
   const name = document.getElementById('spNewName').value.trim();
   const url = document.getElementById('spNewUrl').value.trim();
+  const ig = document.getElementById('spNewIg').value.trim();
   if(!name){ alert('Isi nama sponsor dulu!'); return; }
   if(!SPONSORS.mains) SPONSORS.mains = [];
-  SPONSORS.mains.push({name, url});
+  SPONSORS.mains.push({name, url, ig});
   document.getElementById('spNewName').value='';
   document.getElementById('spNewUrl').value='';
+  document.getElementById('spNewIg').value='';
   await saveAll();
   renderMainSpList();
   renderSponsor();
