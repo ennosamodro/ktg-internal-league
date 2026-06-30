@@ -821,7 +821,7 @@ body::before {
         <div id="rubberPreview" style="margin:10px 0;"></div>
 
         <label class="mlabel">Input / Edit Rubber</label>
-        <select id="inRubber">
+        <select id="inRubber" onchange="renderRubberPreview()">
           <option value="0">Rubber 1</option>
           <option value="1">Rubber 2</option>
           <option value="2">Rubber 3</option>
@@ -831,9 +831,9 @@ body::before {
           <input type="number" id="inA" placeholder="A" min="0" max="4">
           <input type="number" id="inB" placeholder="B" min="0" max="4">
         </div>
-        <label class="mlabel">Pemain Tim A (opsional)</label>
+        <label class="mlabel">Pemain Tim A <span style="font-weight:400;opacity:0.6;text-transform:none;letter-spacing:0;">— otomatis dari Line-up</span></label>
         <div id="playerSelA" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
-        <label class="mlabel">Pemain Tim B (opsional)</label>
+        <label class="mlabel">Pemain Tim B <span style="font-weight:400;opacity:0.6;text-transform:none;letter-spacing:0;">— otomatis dari Line-up</span></label>
         <div id="playerSelB" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
         <button class="mbtn" id="saveRubberBtn" onclick="saveRubber()">💾 Simpan Rubber</button>
       </div>
@@ -1699,17 +1699,20 @@ async function saveRubber() {
   document.querySelectorAll('.pchip').forEach(c=>c.classList.remove('selected'));
 }
 
-function renderPlayerChips(a, b) {
+function renderPlayerChips(a, b, wi, mi, ri) {
   const conA = document.getElementById('playerSelA');
   const conB = document.getElementById('playerSelB');
   if(!conA||!conB) return;
-  const makeChips = (teamIdx, con) => {
+  const luDoubles = LINEUPS[wi]?.[mi]?.doubles?.[ri];
+  const luA = luDoubles?.a || [];
+  const luB = luDoubles?.b || [];
+  const makeChips = (teamIdx, con, presetNames) => {
     const players = TEAMS[teamIdx]?.players || [];
     if(!players.length){ con.innerHTML=`<span style="font-size:11px;color:var(--gray)">Belum ada pemain di tim ini</span>`; return; }
-    con.innerHTML = players.map(p=>`<div class="pchip" data-name="${p.name}" onclick="this.classList.toggle('selected')">${p.name}</div>`).join('');
+    con.innerHTML = players.map(p=>`<div class="pchip${presetNames.includes(p.name)?' selected':''}" data-name="${p.name}" onclick="this.classList.toggle('selected')">${p.name}</div>`).join('');
   };
-  if(a>=0) makeChips(a, conA); else conA.innerHTML='';
-  if(b>=0) makeChips(b, conB); else conB.innerHTML='';
+  if(a>=0) makeChips(a, conA, luA); else conA.innerHTML='';
+  if(b>=0) makeChips(b, conB, luB); else conB.innerHTML='';
 }
 
 function renderRubberPreview() {
@@ -1768,7 +1771,8 @@ function renderRubberPreview() {
     if(!any) html+=`<div class="rub-empty-msg">Belum ada rubber untuk match ini</div>`;
   }
   con.innerHTML=html;
-  renderPlayerChips(a, b);
+  const ri = parseInt(document.getElementById('inRubber').value) || 0;
+  renderPlayerChips(a, b, wi, mi, ri);
 }
 
 async function delRubber(wi,mi,ri){
@@ -1785,8 +1789,9 @@ function editRubber(wi,mi,ri){
   document.getElementById('inA').value=rb.sA;
   document.getElementById('inB').value=rb.sB;
   renderRubberPreview();
-  // restore player selections
+  // restore actual saved player selections (overrides Line-up default)
   setTimeout(()=>{
+    document.querySelectorAll('.pchip').forEach(c=>c.classList.remove('selected'));
     const selA=rb.playersA||[], selB=rb.playersB||[];
     document.querySelectorAll('#playerSelA .pchip').forEach(c=>{ if(selA.includes(c.dataset.name)) c.classList.add('selected'); });
     document.querySelectorAll('#playerSelB .pchip').forEach(c=>{ if(selB.includes(c.dataset.name)) c.classList.add('selected'); });
