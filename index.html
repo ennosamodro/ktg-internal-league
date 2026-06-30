@@ -796,6 +796,7 @@ body::before {
       <div class="modal-title">Admin Panel</div>
       <div class="mtabs">
         <div class="mtab active" onclick="switchTab('hasil',this)">Input Hasil</div>
+        <div class="mtab" onclick="switchTab('lineup',this)">📋 Line-up</div>
         <div class="mtab" onclick="switchTab('tim',this)">Kelola Tim</div>
         <div class="mtab" onclick="switchTab('sponsor',this)">Sponsor</div>
         <div class="mtab" onclick="switchTab('override',this)">⚡ Final</div>
@@ -805,10 +806,10 @@ body::before {
       <div class="atab on" id="atab-hasil">
         <label class="mlabel">Minggu</label>
         <select id="inWeek" onchange="renderRubberPreview()">
-          <option value="0">Minggu 1</option>
-          <option value="1">Minggu 2</option>
-          <option value="2">Minggu 3</option>
-          <option value="3">Minggu 4 (Grand Final)</option>
+          <option value="0">Minggu 1 — Ronde 1</option>
+          <option value="1">Minggu 1 — Ronde 2</option>
+          <option value="2">Minggu 2 — Ronde 3</option>
+          <option value="3">Minggu 2 — Grand Final</option>
         </select>
         <label class="mlabel">Match</label>
         <select id="inMatch" onchange="renderRubberPreview()">
@@ -835,6 +836,36 @@ body::before {
         <label class="mlabel">Pemain Tim B (opsional)</label>
         <div id="playerSelB" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
         <button class="mbtn" id="saveRubberBtn" onclick="saveRubber()">💾 Simpan Rubber</button>
+      </div>
+
+      <!-- LINE-UP (susun jadwal & pasangan sebelum hari-H) -->
+      <div class="atab" id="atab-lineup">
+        <label class="mlabel">Minggu</label>
+        <select id="luWeek" onchange="renderLineupForm()">
+          <option value="0">Minggu 1 — Ronde 1</option>
+          <option value="1">Minggu 1 — Ronde 2</option>
+          <option value="2">Minggu 2 — Ronde 3</option>
+        </select>
+        <label class="mlabel">Match</label>
+        <select id="luMatch" onchange="renderLineupForm()">
+          <option value="0">Match 1</option>
+          <option value="1">Match 2</option>
+        </select>
+
+        <div id="luFixtureLabel" style="font-size:12px;color:var(--gray);font-weight:700;margin:8px 0 14px;"></div>
+
+        <label class="mlabel">Jam Main</label>
+        <input type="text" id="luTime" placeholder="cth: 09.00 – 09.45">
+        <label class="mlabel">Court</label>
+        <select id="luCourt">
+          <option value="Court 1">Court 1</option>
+          <option value="Court 2">Court 2</option>
+        </select>
+
+        <div id="luDoublesWrap"></div>
+
+        <button class="mbtn" id="saveLineupBtn" onclick="saveLineup()">💾 Simpan Line-up</button>
+        <div id="luSavedStatus" style="font-size:11px;color:var(--lime);font-weight:700;margin-top:8px;text-align:center;height:14px;"></div>
       </div>
 
       <!-- KELOLA TIM -->
@@ -918,14 +949,15 @@ const DEFAULT_TEAMS = [
 ];
 
 const SCHEDULE = [
-  {week:1, matches:[[0,1],[2,3]]},
-  {week:2, matches:[[0,2],[1,3]]},
-  {week:3, matches:[[0,3],[1,2]]},
-  {week:4, matches:[[-1,-1],[-2,-2]]}, // Grand Final: match1=#1vs#2, match2=#3vs#4
+  {week:1, label:'Ronde 1', matches:[[0,1],[2,3]]},
+  {week:1, label:'Ronde 2', matches:[[0,2],[1,3]]},
+  {week:2, label:'Ronde 3', matches:[[0,3],[1,2]]},
+  {week:2, label:'Grand Final', matches:[[-1,-1],[-2,-2]]}, // Grand Final: match1=#1vs#2, match2=#3vs#4
 ];
 
 // ─── STATE ───
 let TEAMS, RESULTS, SPONSORS;
+let LINEUPS = {}; // {wi: {mi: {time, court, doubles:[{a:[],b:[]}, x3]}}}
 let FINAL_OVERRIDE = null; // {t1idx, t2idx} — manual override finalis
 let isAdmin = false;
 let isSyncing = false;
@@ -943,9 +975,10 @@ async function fetchFromCloud() {
     TEAMS = record.teams?.length ? record.teams : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
     RESULTS = record.results || {};
     SPONSORS = record.sponsors || {mains:[], extras:[]};
+    LINEUPS = record.lineups || {};
     FINAL_OVERRIDE = record.finalOverride || null;
     // cache locally for offline fallback
-    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, finalOverride:FINAL_OVERRIDE}));
+    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
     hideSyncStatus();
     renderAll();
   } catch(e) {
@@ -954,6 +987,7 @@ async function fetchFromCloud() {
       const cache = JSON.parse(localStorage.getItem('ktg_cache'));
       if (cache) {
         TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
+        LINEUPS = cache.lineups || {};
         FINAL_OVERRIDE = cache.finalOverride || null;
       }
     } catch(e2) {}
@@ -974,9 +1008,9 @@ async function saveToCloud() {
         'Content-Type': 'application/json',
         'X-Access-Key': JSONBIN_KEY
       },
-      body: JSON.stringify({ teams: TEAMS, results: RESULTS, sponsors: SPONSORS, finalOverride: FINAL_OVERRIDE })
+      body: JSON.stringify({ teams: TEAMS, results: RESULTS, sponsors: SPONSORS, lineups: LINEUPS, finalOverride: FINAL_OVERRIDE })
     });
-    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, finalOverride:FINAL_OVERRIDE}));
+    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
     showSyncStatus('✅ Tersimpan!');
     setTimeout(hideSyncStatus, 2000);
   } catch(e) {
@@ -1223,7 +1257,7 @@ function renderStandings() {
     } else {
       gfCard.innerHTML=`<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:16px;padding:16px;text-align:center;margin-top:12px;">
         <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:6px">🏆 Grand Final</div>
-        <div style="font-size:11px;color:var(--gray);font-weight:700">Top 2 klasemen — ditentukan setelah Minggu 3</div>
+        <div style="font-size:11px;color:var(--gray);font-weight:700">Top 2 klasemen — ditentukan setelah Ronde 3 (Minggu 2)</div>
       </div>`;
     }
   }
@@ -1245,7 +1279,7 @@ function renderJadwal() {
     const wdiv = document.createElement('div');
     wdiv.className = 'week-block';
     wdiv.innerHTML = `<div class="week-hdr">
-      <div class="week-num">Minggu ${week.week}</div>
+      <div class="week-num">Minggu ${week.week} <span style="opacity:0.55;font-weight:500">· ${week.label}</span></div>
       <div class="week-badge ${cls}">${txt}</div>
     </div>`;
 
@@ -1297,17 +1331,23 @@ function renderJadwal() {
         } else {
           card.innerHTML=`<div style="text-align:center;padding:10px 0;">
             <div style="font-family:'Anton',sans-serif;font-size:16px;letter-spacing:3px;color:var(--yellow)">${matchLabel}</div>
-            <div style="font-size:11px;color:var(--gray);margin-top:6px;font-weight:700">Ditentukan setelah Minggu 3</div>
+            <div style="font-size:11px;color:var(--gray);margin-top:6px;font-weight:700">Ditentukan setelah Ronde 3 (Minggu 2)</div>
           </div>`;
         }
       } else {
         const tA=TEAMS[a],tB=TEAMS[b];
         const wr=RESULTS[wi]?.[mi];
+        const lu=LINEUPS[wi]?.[mi];
         let wA=0,wB=0;
         if(wr)for(let r=0;r<3;r++){const rb=wr[r];if(!rb)continue;if(rb.sA>rb.sB)wA++;else if(rb.sB>rb.sA)wB++;}
         const sc = wr
           ? `<div class="mscore">${wA}–${wB}</div><div class="mscore-sub">Rubber</div>`
           : `<div class="mvs">VS</div>`;
+        const doublesHtml = (lu?.doubles||[]).filter(d=>d.a.length||d.b.length).map((d,di)=>`
+          <div style="font-size:11px;color:var(--gray2);display:flex;justify-content:space-between;padding:3px 0;">
+            <span style="opacity:0.6">P${di+1}</span>
+            <span>${d.a.join('/')||'?'} <span style="opacity:0.5">vs</span> ${d.b.join('/')||'?'}</span>
+          </div>`).join('');
         card.innerHTML=`
           <div class="mteams">
             <div class="mteam">
@@ -1321,9 +1361,10 @@ function renderJadwal() {
             </div>
           </div>
           <div class="mtime">
-            <span>${mi===0?'09.00 – 11.00':'11.00 – 13.00'}</span>
-            <span>Lapangan Liga</span>
-          </div>`;
+            <span>${lu?.time || 'Jam belum diatur'}</span>
+            <span>${lu?.court || '—'}</span>
+          </div>
+          ${doublesHtml ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">${doublesHtml}</div>` : ''}`;
       }
       wdiv.appendChild(card);
     });
@@ -1391,7 +1432,7 @@ function renderHasil() {
       any=true;
       const grp=document.createElement('div');
       grp.className='match-group';
-      const weekLbl = wi===3?'🏆 Grand Final':`Minggu ${week.week}`;
+      const weekLbl = wi===3?'🏆 Grand Final':`Minggu ${week.week} · ${week.label}`;
       grp.innerHTML=`<div class="mgroup-hdr">${weekLbl} · ${TEAMS[a]?.name||'?'} vs ${TEAMS[b]?.name||'?'}</div>`;
       for(let r=0;r<3;r++){
         const rb=wr[r]; if(!rb)continue;
@@ -1494,6 +1535,7 @@ function switchTab(tab, el) {
   el.classList.add('active');
   if(tab==='tim')renderPedList();
   if(tab==='hasil')renderRubberPreview();
+  if(tab==='lineup')renderLineupForm();
   if(tab==='sponsor') populateSponsorAdmin();
   if(tab==='override') populateOverrideAdmin();
 }
@@ -1552,6 +1594,87 @@ async function resetGrandFinal() {
   await saveAll();
   renderAll();
   alert('✅ Hasil Grand Final berhasil direset!');
+}
+
+// ─── LINE-UP (susun pasangan ganda sebelum hari-H) ───
+function renderLineupForm() {
+  const wi = parseInt(document.getElementById('luWeek').value);
+  const mi = parseInt(document.getElementById('luMatch').value);
+  const labelEl = document.getElementById('luFixtureLabel');
+  const wrap = document.getElementById('luDoublesWrap');
+  const timeEl = document.getElementById('luTime');
+  const courtEl = document.getElementById('luCourt');
+  document.getElementById('luSavedStatus').textContent = '';
+
+  const match = SCHEDULE[wi]?.matches[mi];
+  const [a, b] = match || [-1, -1];
+  const teamA = TEAMS[a], teamB = TEAMS[b];
+
+  if (!teamA || !teamB) {
+    labelEl.textContent = 'Fixture belum tersedia';
+    wrap.innerHTML = '';
+    return;
+  }
+  labelEl.innerHTML = `${SCHEDULE[wi].label} · <span style="color:${teamA.color}">${teamA.name}</span> vs <span style="color:${teamB.color}">${teamB.name}</span>`;
+
+  const saved = LINEUPS[wi]?.[mi];
+  timeEl.value = saved?.time || '';
+  courtEl.value = saved?.court || 'Court 1';
+
+  const playersA = teamA.players || [];
+  const playersB = teamB.players || [];
+
+  wrap.innerHTML = '';
+  for (let d = 0; d < 3; d++) {
+    const savedSlot = saved?.doubles?.[d] || { a: [], b: [] };
+    const row = document.createElement('div');
+    row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:10px;margin:10px 0;';
+    row.innerHTML = `
+      <div style="font-size:10px;letter-spacing:2px;color:var(--gray);font-weight:800;text-transform:uppercase;margin-bottom:8px">Partai ${d+1}</div>
+      <div style="font-size:10px;color:var(--gray);margin-bottom:4px">${teamA.name.replace('Tim ','')} (pilih 2)</div>
+      <div class="lu-chips" id="luA${d}" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+        ${playersA.length ? playersA.map(p=>`<div class="pchip${savedSlot.a.includes(p.name)?' selected':''}" data-name="${p.name}" onclick="toggleLuChip(this)">${p.name}</div>`).join('') : '<span style="font-size:11px;color:var(--gray)">Belum ada pemain</span>'}
+      </div>
+      <div style="font-size:10px;color:var(--gray);margin-bottom:4px">${teamB.name.replace('Tim ','')} (pilih 2)</div>
+      <div class="lu-chips" id="luB${d}" style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${playersB.length ? playersB.map(p=>`<div class="pchip${savedSlot.b.includes(p.name)?' selected':''}" data-name="${p.name}" onclick="toggleLuChip(this)">${p.name}</div>`).join('') : '<span style="font-size:11px;color:var(--gray)">Belum ada pemain</span>'}
+      </div>
+    `;
+    wrap.appendChild(row);
+  }
+}
+
+function toggleLuChip(el) {
+  const group = el.parentElement;
+  const selected = group.querySelectorAll('.pchip.selected');
+  if (!el.classList.contains('selected') && selected.length >= 2) {
+    // already 2 picked — bump the oldest selection to make room
+    selected[0].classList.remove('selected');
+  }
+  el.classList.toggle('selected');
+}
+
+async function saveLineup() {
+  const wi = parseInt(document.getElementById('luWeek').value);
+  const mi = parseInt(document.getElementById('luMatch').value);
+  const time = document.getElementById('luTime').value.trim();
+  const court = document.getElementById('luCourt').value;
+
+  const doubles = [];
+  for (let d = 0; d < 3; d++) {
+    const a = [...document.querySelectorAll(`#luA${d} .pchip.selected`)].map(el=>el.dataset.name);
+    const b = [...document.querySelectorAll(`#luB${d} .pchip.selected`)].map(el=>el.dataset.name);
+    doubles.push({ a, b });
+  }
+
+  if (!LINEUPS[wi]) LINEUPS[wi] = {};
+  LINEUPS[wi][mi] = { time, court, doubles };
+
+  await saveAll();
+  renderAll();
+  const status = document.getElementById('luSavedStatus');
+  status.textContent = '✅ Tersimpan!';
+  setTimeout(()=>{ if(status) status.textContent=''; }, 2000);
 }
 
 async function saveRubber() {
@@ -1614,7 +1737,7 @@ function renderRubberPreview() {
 
   let html='';
   if(wi===3 && a<0){
-    html+=`<div class="rub-empty-msg">⚠️ Selesaikan Minggu 1–3 dulu untuk menentukan peserta Grand Final</div>`;
+    html+=`<div class="rub-empty-msg">⚠️ Selesaikan Ronde 1–3 dulu untuk menentukan peserta Grand Final</div>`;
   } else {
     html+=`<div style="font-size:9px;letter-spacing:2px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:8px">
       ${a>=0?`${tAn} vs ${tBn}`:'—'} · Rubber yang sudah diinput
