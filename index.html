@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>KTG Liga S05 · Ketintang Tennis Group</title>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Nunito:wght@400;600;700;800;900&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -1091,16 +1094,20 @@ const SCHEDULE = [
 // ─── STATE ───
 let TEAMS, RESULTS, SPONSORS;
 let LINEUPS = {}; // {wi: {mi: {time, court, doubles:[{a:[],b:[]}, x3]}}}
+let lastSyncedRecord = null; // snapshot of what we last confirmed matches the cloud
 let FINAL_OVERRIDE = null; // {t1idx, t2idx} — manual override finalis
 let isAdmin = false;
 let isSyncing = false;
 
 // ─── JSONBIN API ───
 function migrateTeams(teams) {
-  return teams.map((t, i) => ({
-    ...t,
-    letter: t.letter || DEFAULT_TEAMS[i]?.letter || GROUP_LETTERS_FALLBACK[i] || '?'
-  }));
+  let changed = false;
+  const migrated = teams.map((t, i) => {
+    if (t.letter) return t;
+    changed = true;
+    return { ...t, letter: DEFAULT_TEAMS[i]?.letter || GROUP_LETTERS_FALLBACK[i] || '?' };
+  });
+  return { migrated, changed };
 }
 const GROUP_LETTERS_FALLBACK = ['A','B','C','D'];
 
@@ -1113,22 +1120,34 @@ async function fetchFromCloud() {
     if (!res.ok) throw new Error('fetch failed');
     const data = await res.json();
     const record = data.record;
-    TEAMS = record.teams?.length ? migrateTeams(record.teams) : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+    let migrationChanged = false;
+    if (record.teams?.length) {
+      const result = migrateTeams(record.teams);
+      TEAMS = result.migrated;
+      migrationChanged = result.changed;
+    } else {
+      TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+    }
     RESULTS = record.results || {};
     SPONSORS = record.sponsors || {mains:[], extras:[]};
     LINEUPS = record.lineups || {};
     FINAL_OVERRIDE = record.finalOverride || null;
+    // snapshot exactly what the cloud currently has, so future saves can tell
+    // which fields THIS device actually changed vs which are still untouched
+    lastSyncedRecord = JSON.parse(JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
     // cache locally for offline fallback
     localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
     hideSyncStatus();
     renderAll();
-    saveAll(); // persist the migrated letter field back to cloud so it sticks
+    // only push back to cloud if migration ACTUALLY changed something (missing letter field),
+    // never save unconditionally on every load — that risks overwriting fresher data from other devices
+    if (migrationChanged) await saveAll();
   } catch(e) {
     // fallback to local cache
     try {
       const cache = JSON.parse(localStorage.getItem('ktg_cache'));
       if (cache) {
-        TEAMS = cache.teams ? migrateTeams(cache.teams) : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+        TEAMS = cache.teams ? migrateTeams(cache.teams).migrated : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
         RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
         LINEUPS = cache.lineups || {};
         FINAL_OVERRIDE = cache.finalOverride || null;
@@ -1145,15 +1164,49 @@ async function saveToCloud() {
   isSyncing = true;
   showSyncStatus('💾 Menyimpan...');
   try {
+    // Fetch the freshest cloud state first, so we don't clobber fields
+    // that other devices changed while this device was idle/stale
+    let freshRecord = null;
+    try {
+      const getRes = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN}/latest`, {
+        headers: { 'X-Access-Key': JSONBIN_KEY }
+      });
+      if (getRes.ok) { const d = await getRes.json(); freshRecord = d.record || null; }
+    } catch(e) { /* if this fails, fall back to pushing local state as-is below */ }
+
+    const fields = ['teams','results','sponsors','lineups','finalOverride'];
+    const localVals = { teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE };
+    const merged = {};
+
+    fields.forEach(f => {
+      const localStr = JSON.stringify(localVals[f]);
+      const baselineStr = lastSyncedRecord ? JSON.stringify(lastSyncedRecord[f]) : null;
+      const localUnchanged = lastSyncedRecord && localStr === baselineStr;
+      if (localUnchanged && freshRecord && freshRecord[f] !== undefined) {
+        // this device never touched this field since last sync — defer to cloud's latest
+        merged[f] = freshRecord[f];
+      } else {
+        // this device actively changed this field — push its version
+        merged[f] = localVals[f];
+      }
+    });
+
     await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'X-Access-Key': JSONBIN_KEY
       },
-      body: JSON.stringify({ teams: TEAMS, results: RESULTS, sponsors: SPONSORS, lineups: LINEUPS, finalOverride: FINAL_OVERRIDE })
+      body: JSON.stringify(merged)
     });
-    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
+
+    // reflect the merged truth back into in-memory state + cache + baseline snapshot
+    TEAMS = merged.teams; RESULTS = merged.results; SPONSORS = merged.sponsors;
+    LINEUPS = merged.lineups; FINAL_OVERRIDE = merged.finalOverride;
+    lastSyncedRecord = JSON.parse(JSON.stringify(merged));
+    localStorage.setItem('ktg_cache', JSON.stringify(merged));
+    renderAll();
+
     showSyncStatus('✅ Tersimpan!');
     setTimeout(hideSyncStatus, 2000);
   } catch(e) {
@@ -1185,7 +1238,7 @@ function load() {
   try {
     const cache = JSON.parse(localStorage.getItem('ktg_cache'));
     if (cache) {
-      TEAMS = cache.teams ? migrateTeams(cache.teams) : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+      TEAMS = cache.teams ? migrateTeams(cache.teams).migrated : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
       RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
     } else {
       TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
