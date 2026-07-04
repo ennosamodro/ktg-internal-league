@@ -307,9 +307,11 @@ body::before {
 .tletter {
   display:inline-flex; align-items:center; justify-content:center;
   width:16px; height:16px; border-radius:4px;
-  font-size:9px; font-weight:900; color:white;
+  font-size:9px; font-weight:900;
   flex-shrink:0; margin-right:5px;
 }
+.tletter.light-bg { color:#1a2e1a; }
+.tletter.dark-bg { color:white; }
 .t-name {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
   color: var(--white) !important;
@@ -1029,6 +1031,15 @@ const JSONBIN_BIN = '69f19f54aaba8821974e0fa6';
 const TEAM_COLORS = ['#ff4757','#2979ff','#ffd600','#00e676'];
 const TEAM_EMOJIS = ['🔴','🔵','🟡','🟢'];
 
+
+function letterColor(hex) {
+  if (!hex) return 'white';
+  const c = hex.replace('#','');
+  const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+  const luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
+  return luminance > 0.6 ? '#1a2e1a' : 'white';
+}
+
 const DEFAULT_TEAMS = [
   {id:0, name:'Tim Merah', letter:'A', color:'#ff4757', players:[]},
   {id:1, name:'Tim Biru', letter:'B', color:'#2979ff', players:[]},
@@ -1253,7 +1264,7 @@ function renderStandings() {
       ${isFirst?'<div class="pod-crown">👑</div>':''}
       <div class="pod-rank">${rank}</div>
       <div style="display:flex;align-items:center;margin-bottom:6px;">
-        <div class="tletter" style="background:${s.color};">${s.letter||''}</div>
+        <div class="tletter" style="background:${s.color};color:${letterColor(s.color)};">${s.letter||''}</div>
         <div class="pod-name">${s.name.replace('Tim ','')}</div>
       </div>
       <div class="pod-pts">${s.points}</div>
@@ -1274,7 +1285,7 @@ function renderStandings() {
     tr.innerHTML = `
       <td><div class="tcell">
         <div class="t-rank ${i<2?'top':''}">${i+1}</div>
-        <div class="tletter" style="background:${s.color};">${s.letter||''}</div>
+        <div class="tletter" style="background:${s.color};color:${letterColor(s.color)};">${s.letter||''}</div>
         <div class="t-name">${s.name.replace('Tim ','')}</div>
       </div></td>
       <td>${s.played}</td><td>${s.won}</td><td>${s.lost}</td>
@@ -1329,12 +1340,12 @@ function renderStandings() {
         <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:14px">🏆 Grand Final ${hasLiveScore?'· LIVE':''}</div>
         <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:${hasLiveScore?'12px':'0'};">
           <div>
-            <div class="tletter" style="background:${t1?.color};width:20px;height:20px;font-size:11px;margin:0 auto 6px"></div>
+            <div class="tletter" style="background:${t1?.color};width:20px;height:20px;font-size:11px;margin:0 auto 6px;color:${letterColor(t1?.color)};">${t1?.letter||''}</div>
             <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t1?.name.replace('Tim ','')||'?'}</div>
           </div>
           <div style="font-family:'Anton',sans-serif;font-size:28px;letter-spacing:2px;color:var(--white);min-width:60px;text-align:center">${hasLiveScore?`<span style="color:${wA>wB?'var(--lime)':'var(--white)'}">${wA}</span>–<span style="color:${wB>wA?'var(--lime)':'var(--white)'}">${wB}</span>`:'VS'}</div>
           <div>
-            <div class="tletter" style="background:${t2?.color};width:20px;height:20px;font-size:11px;margin:0 auto 6px"></div>
+            <div class="tletter" style="background:${t2?.color};width:20px;height:20px;font-size:11px;margin:0 auto 6px;color:${letterColor(t2?.color)};">${t2?.letter||''}</div>
             <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t2?.name.replace('Tim ','')||'?'}</div>
           </div>
         </div>
@@ -1403,7 +1414,7 @@ function renderJadwal() {
             <div style="font-family:'Anton',sans-serif;font-size:13px;letter-spacing:3px;color:var(--yellow);margin-bottom:14px">${matchLabel}</div>
             <div class="mteams" style="justify-content:center;">
               <div class="mteam" style="justify-content:center;">
-                <div class="tletter" style="background:${teamA?.color}">${teamA?.letter||''}</div>
+                <div class="tletter" style="background:${teamA?.color};color:${letterColor(teamA?.color)};">${teamA?.letter||''}</div>
                 <div class="mteam-name">${teamA?.name.replace('Tim ','')||'?'}</div>
                 <div style="font-size:9px;color:var(--gray);margin-left:4px">${isMatch1?'#1':'#3'}</div>
               </div>
@@ -1411,7 +1422,7 @@ function renderJadwal() {
               <div class="mteam right" style="justify-content:center;">
                 <div style="font-size:9px;color:var(--gray);margin-right:4px">${isMatch1?'#2':'#4'}</div>
                 <div class="mteam-name">${teamB?.name.replace('Tim ','')||'?'}</div>
-                <div class="tletter" style="background:${teamB?.color}">${teamB?.letter||''}</div>
+                <div class="tletter" style="background:${teamB?.color};color:${letterColor(teamB?.color)};">${teamB?.letter||''}</div>
               </div>
             </div>
             ${isMatch1&&FINAL_OVERRIDE?'<div style="font-size:9px;color:var(--yellow);margin-top:6px;opacity:0.7">⚡ Manual Override aktif</div>':''}
@@ -1439,12 +1450,12 @@ function renderJadwal() {
         card.innerHTML=`
           <div class="mteams">
             <div class="mteam">
-              <div class="tletter" style="background:${tA.color}">${tA.letter||''}</div>
+              <div class="tletter" style="background:${tA.color};color:${letterColor(tA.color)};">${tA.letter||''}</div>
               <div class="mteam-name">${tA.name.replace('Tim ','')}</div>
             </div>
             <div class="mscore-box">${sc}</div>
             <div class="mteam right">
-              <div class="tletter" style="background:${tB.color}">${tB.letter||''}</div>
+              <div class="tletter" style="background:${tB.color};color:${letterColor(tB.color)};">${tB.letter||''}</div>
               <div class="mteam-name">${tB.name.replace('Tim ','')}</div>
             </div>
           </div>
@@ -1480,7 +1491,7 @@ function renderTim() {
       <div class="tcard-hdr">
         <div class="tcard-emblem" style="background:${team.color}">${initial}</div>
         <div class="tcard-info">
-          <div class="tcard-name" style="color:${team.color}">${team.name} <span class="tletter" style="background:${team.color};vertical-align:middle;">${team.letter||''}</span></div>
+          <div class="tcard-name" style="color:${team.color}">${team.name} <span class="tletter" style="background:${team.color};vertical-align:middle;color:${letterColor(team.color)};">${team.letter||''}</span></div>
           <div class="tcard-sub">${(team.players||[]).length} pemain</div>
         </div>
         <div class="tcard-record">
