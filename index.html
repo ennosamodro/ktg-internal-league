@@ -1010,6 +1010,19 @@ body::before {
       <div class="atab" id="atab-sponsor">
         <div style="font-size:9px;letter-spacing:2px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:10px">Sponsor Utama (Header)</div>
         <div id="mainSpList" style="margin-bottom:10px;"></div>
+
+        <!-- BULK IMPORT -->
+        <div style="background:rgba(255,214,0,0.06);border:1px solid rgba(255,214,0,0.2);border-radius:10px;padding:12px;margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:800;color:var(--yellow);margin-bottom:6px;">⚡ Bulk Import — tambah banyak sponsor sekaligus</div>
+          <div style="font-size:10px;color:var(--gray);margin-bottom:8px;line-height:1.5;">1 baris = 1 sponsor. Format: <code style="background:rgba(255,255,255,0.08);padding:1px 4px;border-radius:3px;">Nama | URL Logo | IG | Tier</code><br>URL/IG/Tier boleh dikosongin. Tier: "utama" atau "pendukung" (default utama).</div>
+          <textarea id="spBulkInput" rows="5" placeholder="Bromen | https://raw.githubusercontent.com/.../bromen.png | https://instagram.com/bromen | utama
+Ludic | https://raw.githubusercontent.com/.../ludic.png | | pendukung
+Sirtanio | | https://instagram.com/sirtanio" style="width:100%;padding:9px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--white);font-family:monospace;font-size:11px;margin-bottom:8px;resize:vertical;"></textarea>
+          <button class="mbtn" onclick="bulkImportSponsors()" style="background:var(--yellow);margin-bottom:0;">⚡ Import Semua</button>
+          <div id="bulkImportStatus" style="font-size:11px;color:var(--lime);margin-top:6px;text-align:center;height:14px;"></div>
+        </div>
+
+        <div style="font-size:9px;letter-spacing:2px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:10px">Atau Tambah Satu-Satu</div>
         <label class="mlabel">Nama Sponsor Baru</label>
         <input type="text" id="spNewName" placeholder="ex: Bromen Men Grooming">
         <label class="mlabel">URL Logo (opsional, GitHub raw)</label>
@@ -2065,6 +2078,35 @@ function renderMainSpList() {
       <button style="background:none;border:none;color:#ff4757;cursor:pointer;font-size:22px;padding:4px 8px;position:relative;z-index:10;line-height:1;" onclick="delMainSponsor(${i})">×</button>
     </div>`;
   }).join('');
+}
+
+async function bulkImportSponsors() {
+  const raw = document.getElementById('spBulkInput').value;
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const status = document.getElementById('bulkImportStatus');
+  if(!lines.length){ status.textContent='Kosong — tempel data dulu.'; status.style.color='#e07a5f'; return; }
+
+  if(!SPONSORS.mains) SPONSORS.mains = [];
+  let added = 0;
+  lines.forEach(line => {
+    const parts = line.split('|').map(p=>p.trim());
+    const name = parts[0];
+    if(!name) return;
+    const url = parts[1] || '';
+    const ig = parts[2] || '';
+    let tier = (parts[3] || 'utama').toLowerCase();
+    if(tier !== 'utama' && tier !== 'pendukung') tier = 'utama';
+    SPONSORS.mains.push({name, url, ig, tier, visible:true});
+    added++;
+  });
+
+  document.getElementById('spBulkInput').value = '';
+  await saveAll();
+  renderMainSpList();
+  renderSponsor();
+  status.style.color = 'var(--lime)';
+  status.textContent = `✅ ${added} sponsor ditambahkan!`;
+  setTimeout(()=>{ status.textContent=''; }, 3000);
 }
 
 async function moveSponsor(i, dir) {
