@@ -1062,6 +1062,14 @@ let isAdmin = false;
 let isSyncing = false;
 
 // ─── JSONBIN API ───
+function migrateTeams(teams) {
+  return teams.map((t, i) => ({
+    ...t,
+    letter: t.letter || DEFAULT_TEAMS[i]?.letter || GROUP_LETTERS_FALLBACK[i] || '?'
+  }));
+}
+const GROUP_LETTERS_FALLBACK = ['A','B','C','D'];
+
 async function fetchFromCloud() {
   try {
     showSyncStatus('⏳ Memuat data...');
@@ -1071,7 +1079,7 @@ async function fetchFromCloud() {
     if (!res.ok) throw new Error('fetch failed');
     const data = await res.json();
     const record = data.record;
-    TEAMS = record.teams?.length ? record.teams : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+    TEAMS = record.teams?.length ? migrateTeams(record.teams) : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
     RESULTS = record.results || {};
     SPONSORS = record.sponsors || {mains:[], extras:[]};
     LINEUPS = record.lineups || {};
@@ -1080,12 +1088,14 @@ async function fetchFromCloud() {
     localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
     hideSyncStatus();
     renderAll();
+    saveAll(); // persist the migrated letter field back to cloud so it sticks
   } catch(e) {
     // fallback to local cache
     try {
       const cache = JSON.parse(localStorage.getItem('ktg_cache'));
       if (cache) {
-        TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
+        TEAMS = cache.teams ? migrateTeams(cache.teams) : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+        RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
         LINEUPS = cache.lineups || {};
         FINAL_OVERRIDE = cache.finalOverride || null;
       }
@@ -1141,7 +1151,8 @@ function load() {
   try {
     const cache = JSON.parse(localStorage.getItem('ktg_cache'));
     if (cache) {
-      TEAMS = cache.teams; RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
+      TEAMS = cache.teams ? migrateTeams(cache.teams) : JSON.parse(JSON.stringify(DEFAULT_TEAMS));
+      RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
     } else {
       TEAMS = JSON.parse(JSON.stringify(DEFAULT_TEAMS));
       RESULTS = {}; SPONSORS = {mains:[], extras:[]};
