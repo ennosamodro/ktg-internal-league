@@ -141,7 +141,32 @@ body::before {
   letter-spacing: 1.5px;
 }
 
-.sp-div { width: 1px; height: 10px; background: var(--border); }
+.sp-div { width: 1px; height: 10px; background: var(--border); flex-shrink:0; }
+
+.sponsor-scroll {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 2px 4px;
+}
+.sponsor-scroll::-webkit-scrollbar { display: none; }
+.sponsor-scroll img {
+  height: 22px;
+  max-width: 72px;
+  object-fit: contain;
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+.sponsor-scroll-small { gap: 12px; }
+.sponsor-scroll-small img {
+  height: 15px;
+  max-width: 50px;
+  opacity: 0.65;
+}
 
 /* ── NAV ── */
 .nav {
@@ -738,9 +763,10 @@ body::before {
   </div>
 
   <!-- SPONSOR STRIP -->
-  <div class="sponsor-strip" id="sponsorStrip">
+  <div class="sponsor-strip" id="sponsorStrip" style="flex-direction:column;align-items:center;gap:8px;">
     <span class="sp-label">Presented by</span>
-    <div id="mainSponsors" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;"></div>
+    <div id="mainSponsors" class="sponsor-scroll"></div>
+    <div id="pendukungSponsors" class="sponsor-scroll sponsor-scroll-small"></div>
   </div>
 </div>
 
@@ -987,7 +1013,15 @@ body::before {
         <input type="text" id="spNewUrl" placeholder="https://raw.githubusercontent.com/...">
         <label class="mlabel">Link Instagram (opsional)</label>
         <input type="text" id="spNewIg" placeholder="https://instagram.com/namabrand">
-        <button class="mbtn" onclick="addMainSponsor()" style="margin-bottom:16px;">+ Tambah Sponsor Utama</button>
+        <label class="mlabel">Tier</label>
+        <select id="spNewTier" style="width:100%;padding:9px 12px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--white);margin-bottom:8px;font-size:13px;">
+          <option value="utama">⭐ Utama (logo besar, baris atas)</option>
+          <option value="pendukung">Pendukung (logo kecil, baris bawah)</option>
+        </select>
+        <button class="mbtn" id="spAddBtn" onclick="addMainSponsor()" style="margin-bottom:6px;">+ Tambah Sponsor Utama</button>
+        <div style="text-align:center;margin-bottom:16px;">
+          <button onclick="cancelEditSponsor()" style="background:none;border:none;color:var(--gray);font-size:11px;text-decoration:underline;cursor:pointer;">Batal edit</button>
+        </div>
 
         <label class="mlabel">Sponsor Pendukung (pisah koma, tampil kecil di bawah)</label>
         <input type="text" id="spExtraIn" placeholder="ex: Kebab, Bakmi Saudagar">
@@ -1577,25 +1611,34 @@ function renderHasil() {
 }
 
 function renderSponsor() {
-  // Main sponsors — dynamic list, skip hidden ones
+  // Main sponsors — split by tier, skip hidden ones
   const mainCon = document.getElementById('mainSponsors');
-  const mains = (SPONSORS.mains || []).filter(sp => sp.visible !== false);
-  
-  if(mainCon){
-    if(!mains.length){
-      mainCon.innerHTML = `<span class="sp-name">— Sponsor —</span>`;
-    } else {
-      mainCon.innerHTML = mains.map((sp, i) => {
-        const divider = i > 0 ? `<div class="sp-div"></div>` : '';
-        const inner = sp.url
-          ? `<img src="${sp.url}" alt="${sp.name}" style="max-height:50px;max-width:120px;object-fit:contain;">`
-          : `<span class="sp-name">${sp.name}</span>`;
-        if(sp.ig){
-          return `${divider}<a href="${sp.ig}" target="_blank" rel="noopener" style="display:flex;align-items:center;text-decoration:none;">${inner}</a>`;
-        }
-        return `${divider}${inner}`;
-      }).join('');
-    }
+  const pendukungCon = document.getElementById('pendukungSponsors');
+  const allMains = (SPONSORS.mains || []).filter(sp => sp.visible !== false);
+  const utama = allMains.filter(sp => (sp.tier || 'utama') === 'utama');
+  const pendukung = allMains.filter(sp => sp.tier === 'pendukung');
+
+  function renderTierRow(con, list){
+    if(!con) return;
+    if(!list.length){ con.innerHTML=''; return; }
+    con.innerHTML = list.map((sp, i) => {
+      const divider = i > 0 ? `<div class="sp-div"></div>` : '';
+      const inner = sp.url
+        ? `<img src="${sp.url}" alt="${sp.name}" loading="lazy">`
+        : `<span class="sp-name">${sp.name}</span>`;
+      if(sp.ig){
+        return `${divider}<a href="${sp.ig}" target="_blank" rel="noopener" style="display:flex;align-items:center;text-decoration:none;">${inner}</a>`;
+      }
+      return `${divider}${inner}`;
+    }).join('');
+  }
+
+  if(!allMains.length && mainCon){
+    mainCon.innerHTML = `<span class="sp-name">— Sponsor —</span>`;
+    if(pendukungCon) pendukungCon.innerHTML = '';
+  } else {
+    renderTierRow(mainCon, utama);
+    renderTierRow(pendukungCon, pendukung);
   }
 
   // extras (small sponsors in footer)
@@ -1949,29 +1992,83 @@ function renderMainSpList() {
   }
   con.innerHTML = mains.map((sp,i)=>{
     const hidden = sp.visible === false;
+    const tier = sp.tier || 'utama';
+    const tierBadge = tier==='utama'
+      ? `<span style="font-size:8px;background:rgba(255,214,0,0.15);color:var(--yellow);padding:2px 6px;border-radius:4px;font-weight:800;margin-left:6px;">⭐ UTAMA</span>`
+      : `<span style="font-size:8px;background:rgba(255,255,255,0.08);color:var(--gray);padding:2px 6px;border-radius:4px;font-weight:800;margin-left:6px;">PENDUKUNG</span>`;
     return `
     <div class="rub-prev" style="margin-bottom:6px;opacity:${hidden?0.45:1};">
+      <div style="display:flex;flex-direction:column;gap:2px;margin-right:4px;">
+        <button style="background:none;border:none;color:${i===0?'var(--border)':'var(--gray)'};cursor:${i===0?'default':'pointer'};font-size:12px;padding:2px;line-height:1;" onclick="${i===0?'':'moveSponsor('+i+',-1)'}" ${i===0?'disabled':''}>▲</button>
+        <button style="background:none;border:none;color:${i===mains.length-1?'var(--border)':'var(--gray)'};cursor:${i===mains.length-1?'default':'pointer'};font-size:12px;padding:2px;line-height:1;" onclick="${i===mains.length-1?'':'moveSponsor('+i+',1)'}" ${i===mains.length-1?'disabled':''}>▼</button>
+      </div>
       <div style="flex:1;">
-        <div style="font-size:13px;font-weight:800;color:var(--white)">${sp.name} ${hidden?'<span style="font-size:9px;color:var(--gray);font-weight:600;">(disembunyikan)</span>':''}</div>
+        <div style="font-size:13px;font-weight:800;color:var(--white)">${sp.name}${tierBadge} ${hidden?'<span style="font-size:9px;color:var(--gray);font-weight:600;">(disembunyikan)</span>':''}</div>
         ${sp.url?`<div style="font-size:10px;color:var(--gray);margin-top:2px;word-break:break-all">${sp.url}</div>`:''}
         ${sp.ig?`<div style="font-size:10px;color:var(--lime);margin-top:2px;">📸 ${sp.ig}</div>`:''}
       </div>
+      <button style="background:none;border:none;color:var(--lime);cursor:pointer;font-size:16px;padding:4px 6px;position:relative;z-index:10;line-height:1;" onclick="editMainSponsor(${i})" title="Edit">✏️</button>
       <button style="background:none;border:none;color:${hidden?'var(--lime)':'var(--gray)'};cursor:pointer;font-size:18px;padding:4px 6px;position:relative;z-index:10;line-height:1;" onclick="toggleMainSponsor(${i})" title="${hidden?'Tampilkan':'Sembunyikan'}">${hidden?'👁️':'🙈'}</button>
       <button style="background:none;border:none;color:#ff4757;cursor:pointer;font-size:22px;padding:4px 8px;position:relative;z-index:10;line-height:1;" onclick="delMainSponsor(${i})">×</button>
     </div>`;
   }).join('');
 }
 
+async function moveSponsor(i, dir) {
+  const arr = SPONSORS.mains;
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  await saveAll();
+  renderMainSpList();
+  renderSponsor();
+}
+
+let editingSponsorIndex = null;
+
+function editMainSponsor(i) {
+  const sp = SPONSORS.mains[i];
+  editingSponsorIndex = i;
+  document.getElementById('spNewName').value = sp.name || '';
+  document.getElementById('spNewUrl').value = sp.url || '';
+  document.getElementById('spNewIg').value = sp.ig || '';
+  document.getElementById('spNewTier').value = sp.tier || 'utama';
+  const btn = document.getElementById('spAddBtn');
+  if(btn){ btn.textContent = '💾 Update Sponsor'; btn.style.background = 'var(--yellow)'; }
+  document.getElementById('spNewName').scrollIntoView({behavior:'smooth', block:'center'});
+  document.getElementById('spNewName').focus();
+}
+
+function cancelEditSponsor() {
+  editingSponsorIndex = null;
+  document.getElementById('spNewName').value='';
+  document.getElementById('spNewUrl').value='';
+  document.getElementById('spNewIg').value='';
+  document.getElementById('spNewTier').value='utama';
+  const btn = document.getElementById('spAddBtn');
+  if(btn){ btn.textContent = '+ Tambah Sponsor Utama'; btn.style.background = ''; }
+}
+
 async function addMainSponsor() {
   const name = document.getElementById('spNewName').value.trim();
   const url = document.getElementById('spNewUrl').value.trim();
   const ig = document.getElementById('spNewIg').value.trim();
+  const tier = document.getElementById('spNewTier').value;
   if(!name){ alert('Isi nama sponsor dulu!'); return; }
-  if(!SPONSORS.mains) SPONSORS.mains = [];
-  SPONSORS.mains.push({name, url, ig, visible:true});
-  document.getElementById('spNewName').value='';
-  document.getElementById('spNewUrl').value='';
-  document.getElementById('spNewIg').value='';
+
+  if(editingSponsorIndex !== null){
+    // update existing, keep visible state
+    const prevVisible = SPONSORS.mains[editingSponsorIndex].visible;
+    SPONSORS.mains[editingSponsorIndex] = {name, url, ig, tier, visible: prevVisible};
+    cancelEditSponsor();
+  } else {
+    if(!SPONSORS.mains) SPONSORS.mains = [];
+    SPONSORS.mains.push({name, url, ig, tier, visible:true});
+    document.getElementById('spNewName').value='';
+    document.getElementById('spNewUrl').value='';
+    document.getElementById('spNewIg').value='';
+    document.getElementById('spNewTier').value='utama';
+  }
   await saveAll();
   renderMainSpList();
   renderSponsor();
