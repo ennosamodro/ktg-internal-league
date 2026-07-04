@@ -304,6 +304,12 @@ body::before {
 }
 .t-rank.top { color: var(--lime); }
 .tdot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.tletter {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:16px; height:16px; border-radius:4px;
+  font-size:9px; font-weight:900; color:white;
+  flex-shrink:0; margin-right:5px;
+}
 .t-name {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
   color: var(--white) !important;
@@ -677,6 +683,33 @@ body::before {
 </style>
 </head>
 <body>
+
+<!-- WELCOME MODAL — muncul sekali per device via localStorage -->
+<div id="welcomeModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,20,10,0.85);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card, #1a2e1a);border:1px solid var(--border, rgba(255,255,255,0.1));border-radius:18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;padding:24px 20px;">
+    <div style="font-size:10px;letter-spacing:3px;color:var(--gray2,#8a9a8a);font-weight:800;text-transform:uppercase;margin-bottom:6px;">KTG Liga S05</div>
+    <div style="font-family:Georgia,serif;font-style:italic;font-size:24px;color:white;margin-bottom:16px;">Selamat datang 👋</div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px 14px;">
+        <div style="font-size:10px;letter-spacing:1.5px;color:var(--lime,#9ce87a);font-weight:800;text-transform:uppercase;margin-bottom:4px;">📅 Format</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">2 minggu, tiap fixture 3 rubber (ganda), first to 4 poin. Menang fixture = 3 poin klasemen.</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px 14px;">
+        <div style="font-size:10px;letter-spacing:1.5px;color:var(--lime,#9ce87a);font-weight:800;text-transform:uppercase;margin-bottom:4px;">🤫 Susunan Pemain</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">Rahasia — ditulis di kertas & dikumpulkan ke panitia sebelum tanding, dibuka bareng di papan skor.</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px 14px;">
+        <div style="font-size:10px;letter-spacing:1.5px;color:var(--lime,#9ce87a);font-weight:800;text-transform:uppercase;margin-bottom:4px;">🏆 Final</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;">Top 2 klasemen → Grand Final. #3 vs #4 → Perebutan Juara 3.</div>
+      </div>
+    </div>
+
+    <button onclick="closeWelcomeModal()" style="width:100%;background:var(--accent,#E8B04B);color:#1a2e1a;border:none;font-weight:800;font-size:14px;padding:13px;border-radius:10px;cursor:pointer;margin-bottom:8px;">Oke, gas!</button>
+    <button onclick="closeWelcomeModal(true)" style="width:100%;background:none;border:none;color:rgba(255,255,255,0.5);font-size:12px;padding:6px;cursor:pointer;text-decoration:underline;">Lihat detail lengkap di tab Rules</button>
+  </div>
+</div>
+
 <div class="wrap">
 
 <!-- HEADER -->
@@ -721,6 +754,7 @@ body::before {
   <button class="nav-btn" onclick="showTab('jadwal',this)">📅 Jadwal</button>
   <button class="nav-btn" onclick="showTab('tim',this)">👕 Tim</button>
   <button class="nav-btn" onclick="showTab('hasil',this)">🎾 Hasil</button>
+  <button class="nav-btn" onclick="showTab('peraturan',this)">📋 Rules</button>
 </div>
 
 <!-- KLASEMEN -->
@@ -758,6 +792,60 @@ body::before {
 <!-- HASIL -->
 <div class="section" id="tab-hasil">
   <div class="hasil-inner" id="hasilCon"></div>
+</div>
+
+<!-- PERATURAN -->
+<div class="section" id="tab-peraturan">
+  <div style="padding:20px 16px 40px;">
+
+    <div style="font-size:10px;letter-spacing:3px;color:var(--gray2);font-weight:800;text-transform:uppercase;margin-bottom:16px;">KTG Liga S05 · Peraturan</div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--lime);font-weight:800;text-transform:uppercase;margin-bottom:8px;">📅 Format Liga</div>
+        <div style="font-size:14px;color:var(--light);line-height:1.7;">
+          Minggu pertama setiap tim bermain <strong>2 fixture</strong>, minggu kedua bermain <strong>1 fixture</strong>, dilanjutkan babak perebutan juara.
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--lime);font-weight:800;text-transform:uppercase;margin-bottom:8px;">🎾 Format Fixture</div>
+        <div style="font-size:14px;color:var(--light);line-height:1.7;">
+          Setiap fixture terdiri dari <strong>3 rubber</strong> (partai ganda). Tim yang memenangkan lebih banyak rubber dalam satu fixture mendapat <strong>3 poin</strong> klasemen.
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--lime);font-weight:800;text-transform:uppercase;margin-bottom:8px;">⚡ Cara Main Rubber</div>
+        <div style="font-size:14px;color:var(--light);line-height:1.7;">
+          Setiap rubber dimainkan oleh <strong>2 vs 2 (ganda)</strong>. Rubber selesai saat salah satu pasangan mencapai <strong>4 poin</strong> terlebih dahulu.
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--lime);font-weight:800;text-transform:uppercase;margin-bottom:8px;">🤫 Susunan Pemain</div>
+        <div style="font-size:14px;color:var(--light);line-height:1.7;">
+          Susunan pemain tiap rubber <strong>bersifat rahasia</strong> — ditentukan masing-masing tim dan ditulis di kertas yang dikumpulkan ke panitia sebelum fixture dimulai. Nama pemain baru dibuka di papan skor sesaat sebelum rubber dimulai.
+        </div>
+      </div>
+
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--lime);font-weight:800;text-transform:uppercase;margin-bottom:8px;">📊 Klasemen & Tiebreaker</div>
+        <div style="font-size:14px;color:var(--light);line-height:1.7;">
+          Urutan klasemen ditentukan dari: <strong>1)</strong> Total poin &nbsp;→&nbsp; <strong>2)</strong> Rubber ratio &nbsp;→&nbsp; <strong>3)</strong> Head-to-head.
+        </div>
+      </div>
+
+      <div style="background:rgba(232,176,75,0.08);border:1px solid rgba(232,176,75,0.25);border-radius:14px;padding:16px 18px;">
+        <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-weight:800;text-transform:uppercase;margin-bottom:8px;">🏆 Babak Final</div>
+        <div style="font-size:14px;color:var(--light);line-height:1.7;">
+          <strong>#1 vs #2</strong> klasemen reguler bermain di <strong>Grand Final</strong>. <strong>#3 vs #4</strong> bermain di <strong>Perebutan Juara 3</strong>. Keduanya dimainkan di Minggu ke-2 setelah ronde reguler selesai.
+        </div>
+      </div>
+
+    </div>
+  </div>
 </div>
 
 <!-- FOOTER -->
@@ -942,10 +1030,10 @@ const TEAM_COLORS = ['#ff4757','#2979ff','#ffd600','#00e676'];
 const TEAM_EMOJIS = ['🔴','🔵','🟡','🟢'];
 
 const DEFAULT_TEAMS = [
-  {id:0, name:'Tim Merah', color:'#ff4757', players:[]},
-  {id:1, name:'Tim Biru', color:'#2979ff', players:[]},
-  {id:2, name:'Tim Kuning', color:'#ffd600', players:[]},
-  {id:3, name:'Tim Hijau', color:'#00e676', players:[]},
+  {id:0, name:'Tim Merah', letter:'A', color:'#ff4757', players:[]},
+  {id:1, name:'Tim Biru', letter:'B', color:'#2979ff', players:[]},
+  {id:2, name:'Tim Kuning', letter:'C', color:'#ffd600', players:[]},
+  {id:3, name:'Tim Hijau', letter:'D', color:'#00e676', players:[]},
 ];
 
 const SCHEDULE = [
@@ -1165,7 +1253,7 @@ function renderStandings() {
       ${isFirst?'<div class="pod-crown">👑</div>':''}
       <div class="pod-rank">${rank}</div>
       <div style="display:flex;align-items:center;margin-bottom:6px;">
-        <div class="tdot" style="background:${s.color};margin-right:7px;"></div>
+        <div class="tletter" style="background:${s.color};">${s.letter||''}</div>
         <div class="pod-name">${s.name.replace('Tim ','')}</div>
       </div>
       <div class="pod-pts">${s.points}</div>
@@ -1186,7 +1274,7 @@ function renderStandings() {
     tr.innerHTML = `
       <td><div class="tcell">
         <div class="t-rank ${i<2?'top':''}">${i+1}</div>
-        <div class="tdot" style="background:${s.color}"></div>
+        <div class="tletter" style="background:${s.color};">${s.letter||''}</div>
         <div class="t-name">${s.name.replace('Tim ','')}</div>
       </div></td>
       <td>${s.played}</td><td>${s.won}</td><td>${s.lost}</td>
@@ -1241,12 +1329,12 @@ function renderStandings() {
         <div style="font-size:9px;letter-spacing:3px;color:var(--yellow);font-weight:800;text-transform:uppercase;margin-bottom:14px">🏆 Grand Final ${hasLiveScore?'· LIVE':''}</div>
         <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:${hasLiveScore?'12px':'0'};">
           <div>
-            <div class="tdot" style="background:${t1?.color};width:12px;height:12px;margin:0 auto 6px"></div>
+            <div class="tletter" style="background:${t1?.color};width:20px;height:20px;font-size:11px;margin:0 auto 6px"></div>
             <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t1?.name.replace('Tim ','')||'?'}</div>
           </div>
           <div style="font-family:'Anton',sans-serif;font-size:28px;letter-spacing:2px;color:var(--white);min-width:60px;text-align:center">${hasLiveScore?`<span style="color:${wA>wB?'var(--lime)':'var(--white)'}">${wA}</span>–<span style="color:${wB>wA?'var(--lime)':'var(--white)'}">${wB}</span>`:'VS'}</div>
           <div>
-            <div class="tdot" style="background:${t2?.color};width:12px;height:12px;margin:0 auto 6px"></div>
+            <div class="tletter" style="background:${t2?.color};width:20px;height:20px;font-size:11px;margin:0 auto 6px"></div>
             <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--white)">${t2?.name.replace('Tim ','')||'?'}</div>
           </div>
         </div>
@@ -1315,7 +1403,7 @@ function renderJadwal() {
             <div style="font-family:'Anton',sans-serif;font-size:13px;letter-spacing:3px;color:var(--yellow);margin-bottom:14px">${matchLabel}</div>
             <div class="mteams" style="justify-content:center;">
               <div class="mteam" style="justify-content:center;">
-                <div class="tdot" style="background:${teamA?.color}"></div>
+                <div class="tletter" style="background:${teamA?.color}">${teamA?.letter||''}</div>
                 <div class="mteam-name">${teamA?.name.replace('Tim ','')||'?'}</div>
                 <div style="font-size:9px;color:var(--gray);margin-left:4px">${isMatch1?'#1':'#3'}</div>
               </div>
@@ -1323,7 +1411,7 @@ function renderJadwal() {
               <div class="mteam right" style="justify-content:center;">
                 <div style="font-size:9px;color:var(--gray);margin-right:4px">${isMatch1?'#2':'#4'}</div>
                 <div class="mteam-name">${teamB?.name.replace('Tim ','')||'?'}</div>
-                <div class="tdot" style="background:${teamB?.color}"></div>
+                <div class="tletter" style="background:${teamB?.color}">${teamB?.letter||''}</div>
               </div>
             </div>
             ${isMatch1&&FINAL_OVERRIDE?'<div style="font-size:9px;color:var(--yellow);margin-top:6px;opacity:0.7">⚡ Manual Override aktif</div>':''}
@@ -1351,12 +1439,12 @@ function renderJadwal() {
         card.innerHTML=`
           <div class="mteams">
             <div class="mteam">
-              <div class="tdot" style="background:${tA.color}"></div>
+              <div class="tletter" style="background:${tA.color}">${tA.letter||''}</div>
               <div class="mteam-name">${tA.name.replace('Tim ','')}</div>
             </div>
             <div class="mscore-box">${sc}</div>
             <div class="mteam right">
-              <div class="tdot" style="background:${tB.color}"></div>
+              <div class="tletter" style="background:${tB.color}">${tB.letter||''}</div>
               <div class="mteam-name">${tB.name.replace('Tim ','')}</div>
             </div>
           </div>
@@ -1392,7 +1480,7 @@ function renderTim() {
       <div class="tcard-hdr">
         <div class="tcard-emblem" style="background:${team.color}">${initial}</div>
         <div class="tcard-info">
-          <div class="tcard-name" style="color:${team.color}">${team.name}</div>
+          <div class="tcard-name" style="color:${team.color}">${team.name} <span class="tletter" style="background:${team.color};vertical-align:middle;">${team.letter||''}</span></div>
           <div class="tcard-sub">${(team.players||[]).length} pemain</div>
         </div>
         <div class="tcard-record">
@@ -1467,9 +1555,9 @@ function renderHasil() {
 }
 
 function renderSponsor() {
-  // Main sponsors — dynamic list
+  // Main sponsors — dynamic list, skip hidden ones
   const mainCon = document.getElementById('mainSponsors');
-  const mains = SPONSORS.mains || [];
+  const mains = (SPONSORS.mains || []).filter(sp => sp.visible !== false);
   
   if(mainCon){
     if(!mains.length){
@@ -1837,15 +1925,19 @@ function renderMainSpList() {
     con.innerHTML=`<div style="font-size:11px;color:var(--gray);padding:6px 0">Belum ada sponsor utama</div>`; 
     return; 
   }
-  con.innerHTML = mains.map((sp,i)=>`
-    <div class="rub-prev" style="margin-bottom:6px;">
+  con.innerHTML = mains.map((sp,i)=>{
+    const hidden = sp.visible === false;
+    return `
+    <div class="rub-prev" style="margin-bottom:6px;opacity:${hidden?0.45:1};">
       <div style="flex:1;">
-        <div style="font-size:13px;font-weight:800;color:var(--white)">${sp.name}</div>
+        <div style="font-size:13px;font-weight:800;color:var(--white)">${sp.name} ${hidden?'<span style="font-size:9px;color:var(--gray);font-weight:600;">(disembunyikan)</span>':''}</div>
         ${sp.url?`<div style="font-size:10px;color:var(--gray);margin-top:2px;word-break:break-all">${sp.url}</div>`:''}
         ${sp.ig?`<div style="font-size:10px;color:var(--lime);margin-top:2px;">📸 ${sp.ig}</div>`:''}
       </div>
+      <button style="background:none;border:none;color:${hidden?'var(--lime)':'var(--gray)'};cursor:pointer;font-size:18px;padding:4px 6px;position:relative;z-index:10;line-height:1;" onclick="toggleMainSponsor(${i})" title="${hidden?'Tampilkan':'Sembunyikan'}">${hidden?'👁️':'🙈'}</button>
       <button style="background:none;border:none;color:#ff4757;cursor:pointer;font-size:22px;padding:4px 8px;position:relative;z-index:10;line-height:1;" onclick="delMainSponsor(${i})">×</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 async function addMainSponsor() {
@@ -1854,10 +1946,17 @@ async function addMainSponsor() {
   const ig = document.getElementById('spNewIg').value.trim();
   if(!name){ alert('Isi nama sponsor dulu!'); return; }
   if(!SPONSORS.mains) SPONSORS.mains = [];
-  SPONSORS.mains.push({name, url, ig});
+  SPONSORS.mains.push({name, url, ig, visible:true});
   document.getElementById('spNewName').value='';
   document.getElementById('spNewUrl').value='';
   document.getElementById('spNewIg').value='';
+  await saveAll();
+  renderMainSpList();
+  renderSponsor();
+}
+
+async function toggleMainSponsor(i) {
+  SPONSORS.mains[i].visible = SPONSORS.mains[i].visible === false ? true : false;
   await saveAll();
   renderMainSpList();
   renderSponsor();
@@ -1888,6 +1987,20 @@ function closeOv(id){document.getElementById(id).classList.remove('on');}
 document.querySelectorAll('.overlay').forEach(ov=>{
   ov.addEventListener('click',function(e){if(e.target===this)this.classList.remove('on');});
 });
+
+// ─── WELCOME MODAL (sekali per device) ───
+const WELCOME_KEY = 'ktg_s05_welcome_seen';
+function closeWelcomeModal(goToRules) {
+  document.getElementById('welcomeModal').style.display = 'none';
+  localStorage.setItem(WELCOME_KEY, '1');
+  if (goToRules) {
+    const rulesBtn = [...document.querySelectorAll('.nav-btn')].find(b => b.textContent.includes('Rules'));
+    if (rulesBtn) rulesBtn.click();
+  }
+}
+if (!localStorage.getItem(WELCOME_KEY)) {
+  document.getElementById('welcomeModal').style.display = 'flex';
+}
 
 // ─── INIT ───
 load();        // instant render from local cache
