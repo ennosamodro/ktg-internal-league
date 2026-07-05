@@ -746,7 +746,7 @@ body::before {
 <div class="header">
   <div class="header-inner">
     <!-- KTG Logo SVG recreation -->
-    <div class="ktg-logo-wrap" onclick="fetchFromCloud()" style="cursor:pointer;" title="Tap untuk refresh">
+    <div class="ktg-logo-wrap" onclick="fetchFromCloud(false)" style="cursor:pointer;" title="Tap untuk refresh">
       <svg class="ktg-logo-svg" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
         <!-- Chat bubble shape -->
         <path d="M25 5C14.5 5 6 12.3 6 21.3C6 26.8 9.2 31.6 14.2 34.5L12 45L22.8 38.9C23.8 39 24.9 39.1 25 39.1C35.5 39.1 44 31.8 44 22.8C44 13.2 35.5 5 25 5Z" fill="none" stroke="white" stroke-width="2" opacity="0.9"/>
@@ -776,6 +776,7 @@ body::before {
 <!-- ADMIN BAR -->
 <div class="admin-bar" id="adminBar">
   ⚡ Admin Mode Aktif
+  <span id="viewCounterTag" style="margin-left:10px;opacity:0.8;font-size:11px;">👁️ — pengunjung</span>
   <span class="admin-exit" onclick="exitAdmin()">✕</span>
 </div>
 
@@ -1106,6 +1107,8 @@ const SCHEDULE = [
 
 // ─── STATE ───
 let TEAMS, RESULTS, SPONSORS;
+let VIEWS = 0;
+let pendingViewIncrement = false;
 let LINEUPS = {}; // {wi: {mi: {time, court, doubles:[{a:[],b:[]}, x3]}}}
 let lastSyncedRecord = null; // snapshot of what we last confirmed matches the cloud
 let FINAL_OVERRIDE = null; // {t1idx, t2idx} — manual override finalis
@@ -1124,7 +1127,7 @@ function migrateTeams(teams) {
 }
 const GROUP_LETTERS_FALLBACK = ['A','B','C','D'];
 
-async function fetchFromCloud() {
+async function fetchFromCloud(isInitialLoad) {
   try {
     showSyncStatus('⏳ Memuat data...');
     const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN}/latest`, {
@@ -1145,16 +1148,21 @@ async function fetchFromCloud() {
     SPONSORS = record.sponsors || {mains:[], extras:[]};
     LINEUPS = record.lineups || {};
     FINAL_OVERRIDE = record.finalOverride || null;
+    VIEWS = record.views || 0;
+    if (isInitialLoad && !localStorage.getItem('ktg_s05_view_counted')) {
+      pendingViewIncrement = true;
+      localStorage.setItem('ktg_s05_view_counted', '1');
+    }
     // snapshot exactly what the cloud currently has, so future saves can tell
     // which fields THIS device actually changed vs which are still untouched
-    lastSyncedRecord = JSON.parse(JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
+    lastSyncedRecord = JSON.parse(JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE, views:VIEWS}));
     // cache locally for offline fallback
-    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE}));
+    localStorage.setItem('ktg_cache', JSON.stringify({teams:TEAMS, results:RESULTS, sponsors:SPONSORS, lineups:LINEUPS, finalOverride:FINAL_OVERRIDE, views:VIEWS}));
     hideSyncStatus();
     renderAll();
     // only push back to cloud if migration ACTUALLY changed something (missing letter field),
     // never save unconditionally on every load — that risks overwriting fresher data from other devices
-    if (migrationChanged) await saveAll();
+    if (migrationChanged || pendingViewIncrement) await saveAll();
   } catch(e) {
     // fallback to local cache
     try {
@@ -1164,6 +1172,7 @@ async function fetchFromCloud() {
         RESULTS = cache.results; SPONSORS = cache.sponsors || {mains:[], extras:[]};
         LINEUPS = cache.lineups || {};
         FINAL_OVERRIDE = cache.finalOverride || null;
+        VIEWS = cache.views || 0;
       }
     } catch(e2) {}
     showSyncStatus('⚠️ Offline — pakai data lokal');
@@ -1204,6 +1213,12 @@ async function saveToCloud() {
       }
     });
 
+    // views is a counter — handle separately to avoid losing increments from other devices.
+    // always base the +1 off the freshest cloud number at save time, not a stale local copy.
+    const cloudViews = freshRecord?.views ?? VIEWS ?? 0;
+    merged.views = pendingViewIncrement ? cloudViews + 1 : cloudViews;
+    pendingViewIncrement = false;
+
     await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN}`, {
       method: 'PUT',
       headers: {
@@ -1216,6 +1231,7 @@ async function saveToCloud() {
     // reflect the merged truth back into in-memory state + cache + baseline snapshot
     TEAMS = merged.teams; RESULTS = merged.results; SPONSORS = merged.sponsors;
     LINEUPS = merged.lineups; FINAL_OVERRIDE = merged.finalOverride;
+    VIEWS = merged.views;
     lastSyncedRecord = JSON.parse(JSON.stringify(merged));
     localStorage.setItem('ktg_cache', JSON.stringify(merged));
     renderAll();
@@ -1357,6 +1373,8 @@ function getStats() {
 // ─── RENDER ───
 function renderAll() {
   renderStandings(); renderJadwal(); renderTim(); renderHasil(); renderSponsor();
+  const vc = document.getElementById('viewCounterTag');
+  if (vc) vc.textContent = `👁️ ${VIEWS} pengunjung`;
 }
 
 function renderStandings() {
@@ -2219,7 +2237,7 @@ if (!localStorage.getItem(WELCOME_KEY)) {
 // ─── INIT ───
 load();        // instant render from local cache
 renderAll();
-fetchFromCloud(); // then sync from cloud
+fetchFromCloud(true); // then sync from cloud (initial load — counts as a view)
 </script>
 </body>
 </html>
