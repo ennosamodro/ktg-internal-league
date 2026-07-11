@@ -851,7 +851,7 @@ body::before {
       <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;">
         <div style="font-size:11px;letter-spacing:2px;color:var(--lime);font-weight:800;text-transform:uppercase;margin-bottom:8px;">⚡ Cara Main Rubber</div>
         <div style="font-size:14px;color:var(--light);line-height:1.7;">
-          Setiap rubber dimainkan oleh <strong>2 vs 2 (ganda)</strong>. Rubber selesai saat salah satu pasangan mencapai <strong>4 poin</strong> terlebih dahulu.
+          Setiap rubber dimainkan oleh <strong>2 vs 2 (ganda)</strong>. Ronde reguler: rubber selesai saat salah satu pasangan mencapai <strong>4 poin</strong>. Khusus <strong>Grand Final & Perebutan Juara 3</strong>: rubber dimainkan sampai <strong>6 poin</strong>.
         </div>
       </div>
 
@@ -951,6 +951,7 @@ body::before {
           <input type="number" id="inA" placeholder="A" min="0" max="4">
           <input type="number" id="inB" placeholder="B" min="0" max="4">
         </div>
+        <div id="inScoreHint" style="font-size:10px;color:var(--gray);margin:-6px 0 10px;"></div>
         <label class="mlabel">Pemain Tim A <span style="font-weight:400;opacity:0.6;text-transform:none;letter-spacing:0;">— otomatis dari Line-up</span></label>
         <div id="playerSelA" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
         <label class="mlabel">Pemain Tim B <span style="font-weight:400;opacity:0.6;text-transform:none;letter-spacing:0;">— otomatis dari Line-up</span></label>
@@ -965,12 +966,14 @@ body::before {
           <option value="0">Minggu 1 — Ronde 1</option>
           <option value="1">Minggu 1 — Ronde 2</option>
           <option value="2">Minggu 2 — Ronde 3</option>
+          <option value="3">Minggu 2 — 🏆 Final</option>
         </select>
         <label class="mlabel">Match</label>
         <select id="luMatch" onchange="renderLineupForm()">
           <option value="0">Match 1</option>
           <option value="1">Match 2</option>
         </select>
+        <div id="luFinalHint" style="display:none;font-size:11px;color:var(--gray);margin:-6px 0 10px;">Match 1 = 🏆 Grand Final (#1 vs #2) · Match 2 = 🥉 Perebutan Juara 3 (#3 vs #4)</div>
 
         <div id="luFixtureLabel" style="font-size:12px;color:var(--gray);font-weight:700;margin:8px 0 14px;"></div>
 
@@ -1320,6 +1323,15 @@ function getFinalists(stats) {
   return [stats[0], stats[1]];
 }
 
+// Ambil 2 tim buat Perebutan Juara 3 — selalu "sisa" tim yang TIDAK masuk final,
+// bukan hardcode stats[2]/stats[3], karena override bisa aja pilih tim di luar urutan klasemen mentah
+function getThirdPlaceTeams(stats) {
+  const [f1, f2] = getFinalists(stats);
+  const finalistIds = new Set([f1?.id, f2?.id]);
+  const remaining = stats.filter(s => !finalistIds.has(s.id));
+  return [remaining[0], remaining[1]];
+}
+
 
 function isMatchComplete(wi, mi) {
   const wr = RESULTS[wi]?.[mi];
@@ -1329,7 +1341,7 @@ function isMatchComplete(wi, mi) {
     const rb = wr[r];
     if(rb && (rb.sA > 0 || rb.sB > 0) && !isNaN(rb.sA) && !isNaN(rb.sB)) validRubbers++;
   }
-  const required = (wi === 3) ? 3 : 2; // GF wajib 3 rubber semua
+  const required = 3; // semua fixture (ronde biasa maupun Final) wajib 3 rubber penuh
   return validRubbers >= required;
 }
 
@@ -1522,8 +1534,9 @@ function renderJadwal() {
         const isMatch1 = mi===0;
         const matchLabel = isMatch1 ? '🏆 GRAND FINAL' : '🥉 PEREBUTAN JUARA 3';
         const [gfT1, gfT2] = getFinalists(stats);
-        const teamA = isMatch1 ? gfT1 : stats[2];
-        const teamB = isMatch1 ? gfT2 : stats[3];
+        const [tp1, tp2] = getThirdPlaceTeams(stats);
+        const teamA = isMatch1 ? gfT1 : tp1;
+        const teamB = isMatch1 ? gfT2 : tp2;
         const finalRes = RESULTS[3]?.[mi];
 
         if (isMatchComplete(3, mi)) {
@@ -1539,6 +1552,12 @@ function renderJadwal() {
             <div style="font-size:11px;color:var(--gray);margin-top:10px;font-weight:700">Runner-up: ${loser?.name||'—'}</div>
           </div>`;
         } else if (isAllRegDone() && teamA && teamB) {
+          const lu = LINEUPS[3]?.[mi];
+          const doublesHtml = (lu?.doubles||[]).filter(d=>d.a.length||d.b.length).map((d,di)=>`
+            <div style="font-size:11px;color:var(--gray2);display:flex;justify-content:space-between;padding:3px 0;">
+              <span style="opacity:0.6">P${di+1}</span>
+              <span>${d.a.join('/')||'?'} <span style="opacity:0.5">vs</span> ${d.b.join('/')||'?'}</span>
+            </div>`).join('');
           card.innerHTML=`<div style="text-align:center;padding:10px 0;">
             <div style="font-family:'Anton',sans-serif;font-size:13px;letter-spacing:3px;color:var(--yellow);margin-bottom:14px">${matchLabel}</div>
             <div class="mteams" style="justify-content:center;">
@@ -1555,6 +1574,11 @@ function renderJadwal() {
               </div>
             </div>
             ${isMatch1&&FINAL_OVERRIDE?'<div style="font-size:9px;color:var(--yellow);margin-top:6px;opacity:0.7">⚡ Manual Override aktif</div>':''}
+            <div style="display:flex;justify-content:center;gap:14px;font-size:11px;color:var(--gray);margin-top:10px;">
+              <span>${lu?.time || 'Jam belum diatur'}</span>
+              <span>${lu?.court || '—'}</span>
+            </div>
+            ${doublesHtml ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);text-align:left;">${doublesHtml}</div>` : ''}
           </div>`;
         } else {
           card.innerHTML=`<div style="text-align:center;padding:10px 0;">
@@ -1647,10 +1671,11 @@ function renderHasil() {
       if(wi===3 && a<0 && b<0){
         if(isAllRegDone() && stats.length>=4){
           const [f1,f2] = getFinalists(stats);
-          if(mi===0){ // Match 1: #1 vs #2
+          if(mi===0){ // Match 1: finalis
             a=f1?.id; b=f2?.id;
-          } else { // Match 2: #3 vs #4
-            a=stats[2]?.id; b=stats[3]?.id;
+          } else { // Match 2: sisa (bukan finalis)
+            const [tp1,tp2] = getThirdPlaceTeams(stats);
+            a=tp1?.id; b=tp2?.id;
           }
         } else return;
       }
@@ -1842,17 +1867,37 @@ function renderLineupForm() {
   const timeEl = document.getElementById('luTime');
   const courtEl = document.getElementById('luCourt');
   document.getElementById('luSavedStatus').textContent = '';
+  document.getElementById('luFinalHint').style.display = (wi === 3) ? 'block' : 'none';
 
-  const match = SCHEDULE[wi]?.matches[mi];
-  const [a, b] = match || [-1, -1];
-  const teamA = TEAMS[a], teamB = TEAMS[b];
+  let teamA, teamB;
+
+  if (wi === 3) {
+    // Grand Final / Perebutan Juara 3 — teams come from standings, not a fixed SCHEDULE pair
+    const ronde123Done = [0,1,2].every(w => SCHEDULE[w].matches.every((_,m) => isMatchComplete(w,m)));
+    if (!ronde123Done) {
+      labelEl.textContent = '⚠️ Ronde 1–3 belum semua selesai — finalis belum bisa ditentukan';
+      wrap.innerHTML = '';
+      return;
+    }
+    const stats = getStats();
+    if (mi === 0) {
+      [teamA, teamB] = getFinalists(stats);
+    } else {
+      [teamA, teamB] = getThirdPlaceTeams(stats);
+    }
+  } else {
+    const match = SCHEDULE[wi]?.matches[mi];
+    const [a, b] = match || [-1, -1];
+    teamA = TEAMS[a]; teamB = TEAMS[b];
+  }
 
   if (!teamA || !teamB) {
     labelEl.textContent = 'Fixture belum tersedia';
     wrap.innerHTML = '';
     return;
   }
-  labelEl.innerHTML = `${SCHEDULE[wi].label} · <span style="color:${teamA.color}">${teamA.name}</span> vs <span style="color:${teamB.color}">${teamB.name}</span>`;
+  const fixtureLabel = wi === 3 ? (mi === 0 ? '🏆 Grand Final' : '🥉 Perebutan Juara 3') : SCHEDULE[wi].label;
+  labelEl.innerHTML = `${fixtureLabel} · <span style="color:${teamA.color}">${teamA.name}</span> vs <span style="color:${teamB.color}">${teamB.name}</span>`;
 
   const saved = LINEUPS[wi]?.[mi];
   timeEl.value = saved?.time || '';
@@ -1958,6 +2003,15 @@ function renderRubberPreview() {
   const con=document.getElementById('rubberPreview');
   if(!con)return;
 
+  // Final pakai first-to-6, ronde biasa first-to-4
+  const scoreMax = (wi === 3) ? 6 : 4;
+  const inAEl = document.getElementById('inA');
+  const inBEl = document.getElementById('inB');
+  if(inAEl) inAEl.max = scoreMax;
+  if(inBEl) inBEl.max = scoreMax;
+  const hintEl = document.getElementById('inScoreHint');
+  if(hintEl) hintEl.textContent = wi === 3 ? 'Final: first to 6 poin' : 'First to 4 poin';
+
   let match=SCHEDULE[wi]?.matches[mi];
   let [a,b]=match||[-1,-1];
   
@@ -1967,7 +2021,7 @@ function renderRubberPreview() {
     if(isAllRegDone() && stats.length>=4){
       const [f1,f2] = getFinalists(stats);
       if(mi===0){ a=f1?.id; b=f2?.id; }
-      else { a=stats[2]?.id; b=stats[3]?.id; }
+      else { const [tp1,tp2]=getThirdPlaceTeams(stats); a=tp1?.id; b=tp2?.id; }
     }
   }
 
